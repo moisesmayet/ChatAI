@@ -1,0 +1,85 @@
+{% extends 'dashboard/topics/topics_sidepanel.html' %}
+
+{% block sidepanel %}
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card">
+            <div class="card-header pb-0">
+                <h6>{{ language.new }}</h6>
+            </div>
+
+            <div>
+                <a href="{{ url_for('topics_list') }}" class="float-end pe-3">
+                  <i class="fa fa-times me-sm-1"></i>
+                </a>
+            </div>
+
+            <div class="card-body p-3">
+                <form method="POST" action="{{ url_for('topics_new') }}">
+                  <label>{{ language.name }}</label>
+                  <div class="mb-3">
+                    <input
+                      id="topic_name"
+                      class="form-control"
+                      type="text"
+                      name="topic_name"
+                      placeholder="Name"
+                      required
+                    >
+                  </div>
+
+                  <label>{{ language.order }}</label>
+                  <div class="mb-3">
+                    <input
+                      id="topic_order"
+                      class="form-control"
+                      type="number"
+                      min="0"
+                      name="topic_order"
+                      value="{{ topics | length }}"
+                      oninput="this.value = this.value.replace(/\D/g, '')"
+                      required
+                    >
+                  </div>
+
+                  <label>{{ language.finetuning }}</label>
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      id="topic_rebuild"
+                      class="form-check-input"
+                      type="checkbox"
+                      name="topic_rebuild"
+                      checked
+                    >
+                  </div>
+
+                  <label>{{ language.system }}</label>
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      id="topic_system"
+                      class="form-check-input"
+                      type="checkbox"
+                      name="topic_system"
+                    >
+                  </div>
+
+                  <label>{{ language.context }}</label>
+                  <div class="mb-3">
+                    <textarea
+                          id="topic_context"
+                          class="form-control"
+                          name="topic_context"
+                          rows="6"
+                          required
+                    ></textarea>
+                  </div>
+
+                  <div class="float-end">
+                    <button type="submit" name="topics_new" class="btn bg-gradient-dark w-100 my-4 mb-2">{{ language.confirm }}</button>
+                  </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+{% endblock sidepanel %}

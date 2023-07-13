@@ -1,0 +1,144 @@
+
+<div class="card">
+  <div class="card-header pb-0">
+    <div class="row">
+      <div class="col-lg-6 col-7">
+        <h6>{{ language.experts }}</h6>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body px-0 pb-2">
+    <div class="table-responsive">
+      <table class="table align-items-center mb-0">
+        <thead>
+          <tr>
+            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.expert }}</th>
+            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">{{ language.name }}</th>
+            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Whatsapp</th>
+            {% if agent == '' %}
+              <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.lastcall }}</th>
+            {% endif %}
+            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.active }}</th>
+            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Staff</th>
+            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Admin</th>
+            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
+            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
+            {% if permission == 'super' %}
+              <th class="text-center">
+                <a href="{{ url_for('agents_new') }}" class="nav-link text-body font-weight-bold px-0">
+                  <i class="fa fa-plus-circle me-sm-1"></i>
+                </a>
+              </th>
+            {% endif %}
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for item in agents %}
+            <tr>
+              <td>
+                <div class="d-flex px-2 py-1">
+                  <div>
+                    <a href="javascript:;" class="avatar avatar-xs rounded-circle" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Romina Hadid">
+                      <img src="{{ url_for('static', path='img/user.png') }}" alt="team2">
+                    </a>
+                  </div>
+                  <div class="d-flex flex-column justify-content-center">
+                    <span class="ms-2 text-xs font-weight-bold"> {{ item.agent_number }} </span>
+                  </div>
+                </div>
+              </td>
+
+              <td>
+                <div class="text-xs avatar-group mt-2">
+                  <span class="font-weight-bold"> {{ item.agent_name }} </span>
+                </div>
+              </td>
+
+              <td>
+                <div class="text-center avatar-group mt-2">
+                  <span class="text-center text-xs font-weight-bold"> {{ item.agent_whatsapp }} </span>
+                </div>
+              </td>
+
+              {% if agent == '' %}
+                <td>
+                  <div class="text-center avatar-group mt-2">
+                    <span class="text-xs font-weight-bold"> {{ item.agent_lastcall.strftime("%Y-%m-%d %H:%M") }} </span>
+                  </div>
+                </td>
+              {% endif %}
+
+              <td>
+                <div class="text-center avatar-group mt-2">
+                  {% if item.agent_active %}
+                    <span class="badge badge-sm bg-success">Online</span>
+                  {% else %}
+                    <span class="badge badge-sm bg-secondary">Offline</span>
+                  {% endif %}
+                </div>
+              </td>
+
+              <td>
+                <div class="form-check form-switch avatar-group mt-2 d-flex justify-content-center">
+                  {% if item.agent_staff %}
+                    <input class="form-check-input" type="checkbox" disabled checked>
+                  {% else %}
+                    <input class="form-check-input" type="checkbox" disabled>
+                  {% endif %}
+                </div>
+              </td>
+
+              <td>
+                <div class="form-check form-switch avatar-group mt-2 d-flex justify-content-center">
+                  {% if item.agent_super %}
+                    <input class="form-check-input" type="checkbox" disabled checked>
+                  {% else %}
+                    <input class="form-check-input" type="checkbox" disabled>
+                  {% endif %}
+                </div>
+              </td>
+
+              <td class="align-middle text-center text-sm custom-cell-width">
+                <a href="{{ url_for('agents_view', agent_number=item.agent_number) }}" class="nav-link text-body font-weight-bold px-0">
+                  <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/General/Visible.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+                      <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                          <path d="M3,12 C3,12 5.45454545,6 12,6 C16.9090909,6 21,12 21,12 C21,12 16.9090909,18 12,18 C5.45454545,18 3,12 3,12 Z" fill="#000000" fill-rule="nonzero" opacity="0.3"/>
+                          <path d="M12,15 C10.3431458,15 9,13.6568542 9,12 C9,10.3431458 10.3431458,9 12,9 C13.6568542,9 15,10.3431458 15,12 C15,13.6568542 13.6568542,15 12,15 Z" fill="#000000" opacity="0.3"/>
+                      </g>
+                  </svg><!--end::Svg Icon--></span>
+                </a>
+              </td>
+
+              <td class="align-middle text-center text-sm custom-cell-width">
+                <a href="{{ url_for('agents_queries', agent_number=item.agent_number) }}" class="nav-link text-body font-weight-bold px-0">
+                  <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Communication/Group-chat.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+                      <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                          <path d="M16,15.6315789 L16,12 C16,10.3431458 14.6568542,9 13,9 L6.16183229,9 L6.16183229,5.52631579 C6.16183229,4.13107011 7.29290239,3 8.68814808,3 L20.4776218,3 C21.8728674,3 23.0039375,4.13107011 23.0039375,5.52631579 L23.0039375,13.1052632 L23.0206157,17.786793 C23.0215995,18.0629336 22.7985408,18.2875874 22.5224001,18.2885711 C22.3891754,18.2890457 22.2612702,18.2363324 22.1670655,18.1421277 L19.6565168,15.6315789 L16,15.6315789 Z" fill="#000000"/>
+                          <path d="M1.98505595,18 L1.98505595,13 C1.98505595,11.8954305 2.88048645,11 3.98505595,11 L11.9850559,11 C13.0896254,11 13.9850559,11.8954305 13.9850559,13 L13.9850559,18 C13.9850559,19.1045695 13.0896254,20 11.9850559,20 L4.10078614,20 L2.85693427,21.1905292 C2.65744295,21.3814685 2.34093638,21.3745358 2.14999706,21.1750444 C2.06092565,21.0819836 2.01120804,20.958136 2.01120804,20.8293182 L2.01120804,18.32426 C1.99400175,18.2187196 1.98505595,18.1104045 1.98505595,18 Z M6.5,14 C6.22385763,14 6,14.2238576 6,14.5 C6,14.7761424 6.22385763,15 6.5,15 L11.5,15 C11.7761424,15 12,14.7761424 12,14.5 C12,14.2238576 11.7761424,14 11.5,14 L6.5,14 Z M9.5,16 C9.22385763,16 9,16.2238576 9,16.5 C9,16.7761424 9.22385763,17 9.5,17 L11.5,17 C11.7761424,17 12,16.7761424 12,16.5 C12,16.2238576 11.7761424,16 11.5,16 L9.5,16 Z" fill="#000000" opacity="0.3"/>
+                      </g>
+                  </svg><!--end::Svg Icon--></span>
+                </a>
+              </td>
+
+              {% if permission == 'super' %}
+                <td class="align-middle text-center text-sm custom-cell-width">
+                  <a href="{{ url_for('agents_edit', agent_number=item.agent_number) }}" class="nav-link text-body font-weight-bold px-0">
+                    <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Design/Edit.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                            <rect x="0" y="0" width="24" height="24"/>
+                            <path d="M8,17.9148182 L8,5.96685884 C8,5.56391781 8.16211443,5.17792052 8.44982609,4.89581508 L10.965708,2.42895648 C11.5426798,1.86322723 12.4640974,1.85620921 13.0496196,2.41308426 L15.5337377,4.77566479 C15.8314604,5.0588212 16,5.45170806 16,5.86258077 L16,17.9148182 C16,18.7432453 15.3284271,19.4148182 14.5,19.4148182 L9.5,19.4148182 C8.67157288,19.4148182 8,18.7432453 8,17.9148182 Z" fill="#000000" fill-rule="nonzero" transform="translate(12.000000, 10.707409) rotate(-135.000000) translate(-12.000000, -10.707409) "/>
+                            <rect fill="#000000" opacity="0.3" x="5" y="20" width="15" height="2" rx="1"/>
+                        </g>
+                    </svg><!--end::Svg Icon--></span>
+                  </a>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

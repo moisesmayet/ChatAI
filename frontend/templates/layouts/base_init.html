@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <link rel="apple-touch-icon" sizes="76x76" href="{{ url_for('static', path='img/apple-icon.png') }}">
+      <link rel="icon" type="image/png" href="{{ url_for('static', path='img/favicon.png') }}">
+
+      <title>
+         ChatAI Dashboard | {% block title %}{% endblock %}
+      </title>
+
+      <!--     Fonts and icons     -->
+      <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet" />
+      <!-- Nucleo Icons -->
+      <link href="{{ url_for('static', path='css/nucleo-icons.css') }}" rel="stylesheet" />
+      <link href="{{ url_for('static', path='css/nucleo-svg.css') }}" rel="stylesheet" />
+      <!-- Font Awesome Icons -->
+      <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
+      <link href="{{ url_for('static', path='css/nucleo-svg.css') }}" rel="stylesheet" />
+      <!-- CSS Files -->
+      <link href="{{ url_for('static', path='css/styles.css') }}" rel="stylesheet" />
+      <link id="pagestyle" href="{{ url_for('static', path='css/soft-ui-dashboard.css?v=1.0.6') }}" rel="stylesheet" />
+      <link id="pagestyle_dark" href="{{ url_for('static', path='css/dark-theme-core.css') }}" rel="stylesheet" />
+
+      <!-- Specific CSS goes HERE -->
+      {% block stylesheets %}{% endblock stylesheets %}
+   </head>
+
+   <body class="g-sidenav-show  bg-gray-100">
+      {% block main %}{% endblock main %}
+
+      <!-- Core JS Files -->
+      {% include "includes/scripts.html" %}
+      <!-- Specific JS goes HERE -->
+      {% block javascripts %}{% endblock javascripts %}
+   </body>
+</html>
+

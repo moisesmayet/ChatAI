@@ -1,0 +1,80 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Profile {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+    <div class="container-fluid py-4">
+
+      <div class="row my-4">
+        <div class="col-lg-12 col-md-6 mb-md-0 mb-4">
+          <div class="card">
+            <div class="card-header pb-0">
+              <div class="row">
+                <div class="col-lg-6 col-7">
+                  <h6>{{ language.profile }}</h6>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-xl-4 card-body px-0 pb-2  mx-auto">
+                  <form role="form text-left" method="POST" action="{{ url_for('signin') }}">
+
+                    <label>{{ language.expert }}</label>
+                    <div class="mb-3">
+                      <input
+                        id="username"
+                        class="form-control"
+                        name="username"
+                        type="text"
+                        value="{{ agent.agent_number }}"
+                        disabled
+                      >
+                    </div>
+
+                    <label>{{ language.password }}</label>
+                    <div class="mb-3">
+                      <input
+                        id="password1"
+                        class="form-control"
+                        name="password1"
+                        type="password"
+                        placeholder="{{ language.password }}"
+                        required
+                      >
+                    </div>
+
+                    <label>{{ language.confirm }} {{ language.password }}</label>
+                    <div class="mb-3">
+                      <input
+                        id="password2"
+                        class="form-control"
+                        name="password2"
+                        type="password"
+                        placeholder="{{ language.confirm }} {{ language.password }}"
+                        required
+                      >
+                    </div>
+
+                    <div class="float-end">
+                      <button type="submit" name="topics_new" class="btn bg-gradient-dark w-100 my-4 mb-2">{{ language.confirm }}</button>
+                    </div>
+                  </form>
+            </div>
+
+            <div class="card-header pb-0 text-left bg-transparent">
+              <p class="mb-0">
+                {% if msg %}
+                  <span class="text-danger">{{ msg | safe }}</span>
+                {% endif %}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+{% endblock content %}

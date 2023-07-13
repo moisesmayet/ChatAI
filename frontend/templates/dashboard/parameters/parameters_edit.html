@@ -1,0 +1,104 @@
+{% extends 'dashboard/parameters/parameters_sidepanel.html' %}
+
+{% block sidepanel %}
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card">
+            <div class="card-header pb-0">
+                <h6>{{ language.edit }}</h6>
+            </div>
+
+            <div>
+                <a href="{{ url_for('parameters_list') }}" class="float-end pe-3">
+                  <i class="fa fa-times me-sm-1"></i>
+                </a>
+            </div>
+
+            <div class="card-body p-3">
+                <form method="POST" action="{{ url_for('parameters_edit', parameter_name=parameter.parameter_name) }}">
+                  <label>{{ language.name }}</label>
+                  <div class="mb-3">
+                    <input
+                      id="parameter_name"
+                      class="form-control"
+                      type="text"
+                      name="parameter_name"
+                      value="{{ parameter.parameter_name }}"
+                      disabled
+                    >
+                  </div>
+
+                  <label>{{ language.value }}</label>
+                  <div class="mb-3">
+                      {% if combo_values | length == 0 %}
+                            {% if lang_alias | length > 0 %}
+                                <input
+                                  id="alias_value"
+                                  class="form-control"
+                                  type="text"
+                                  name="alias_value"
+                                  value="{{ parameter.parameter_value }}"
+                                >
+
+                                <label>Singular ES</label>
+                                <input
+                                  id="alias_es_s"
+                                  class="form-control"
+                                  type="text"
+                                  name="alias_es_s"
+                                  value="{{ lang_alias.es_s }}"
+                                >
+
+                                <label>Prural ES</label>
+                                <input
+                                  id="alias_es_p"
+                                  class="form-control"
+                                  type="text"
+                                  name="alias_es_p"
+                                  value="{{ lang_alias.es_p }}"
+                                >
+
+                                <label>Singular EN</label>
+                                <input
+                                  id="alias_en_s"
+                                  class="form-control"
+                                  type="text"
+                                  name="alias_en_s"
+                                  value="{{ lang_alias.en_s }}"
+                                >
+
+                                <label>Prural EN</label>
+                                <input
+                                  id="alias_en_p"
+                                  class="form-control"
+                                  type="text"
+                                  name="alias_en_p"
+                                  value="{{ lang_alias.en_p }}"
+                                >
+                            {% else %}
+                                <textarea
+                                      id="parameter_value"
+                                      class="form-control"
+                                      name="parameter_value"
+                                      rows="6"
+                                      required
+                                >{{ parameter.parameter_value }}</textarea>
+                          {% endif %}
+                      {% else %}
+                          <select id="combo_value" name="combo_value" class="form-select" aria-label="Select option">
+                              {% for combo in combo_values %}
+                                <option value="{{ combo.value }}" {% if combo.selected %}selected{% endif %}>{{ combo.name }}</option>
+                              {% endfor %}
+                          </select>
+                      {% endif %}
+                  </div>
+
+                  <div class="float-end">
+                    <button type="submit" name="parameters_edit" class="btn bg-gradient-dark w-100 my-4 mb-2">{{ language.confirm }}</button>
+                  </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+{% endblock sidepanel %}
