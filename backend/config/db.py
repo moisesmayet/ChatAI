@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 host = '127.0.0.1'
 port = 5432
 user = 'postgres'
-password = 'postgresuapa'  # 'gvDT332dchGBK'
+password = 'postgrespassword'
 database = 'chatai_fisiopatologia_db'
 
 # Crea la cadena de conexión
