@@ -191,7 +191,7 @@ topic_len = len(topics) - 1
 for i, item in enumerate(topics):
     topic = item.topic_name
     context_value = item.topic_context
-    topic_context += f'", "<{i}> ' + context_value.replace(',', f'",  "<{i}>')
+    topic_context += f'", "<{i}>: ' + context_value.replace(',', f' \\')
     topic_list[str(i)] = topic
     topic_index[topic] = ''
     if item.topic_rebuild:
