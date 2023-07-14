@@ -64,7 +64,7 @@ async def topics_new(request: Request):
     if request.cookies.get('Permission') == 'super':
         form = await request.form()
         form = {field: form[field] for field in form}
-
+        topic_name = form['topic_name']
         topic_system = False
         topic_rebuild = False
         if 'topic_system' in form:
@@ -73,12 +73,12 @@ async def topics_new(request: Request):
             topic_rebuild = True
 
         db: Session = get_db_conn()
-        new_topic = Topic(topic_name=form['topic_name'], topic_context=form['topic_context'], topic_order=form['topic_order'], topic_rebuild=topic_rebuild, topic_system=topic_system)
+        new_topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_order=form['topic_order'], topic_rebuild=topic_rebuild, topic_system=topic_system)
         db.add(new_topic)
         db.commit()
         db.close()
 
-        redirect = RedirectResponse(url=topic_app.url_path_for('topics_list'))
+        redirect = RedirectResponse(url=topic_app.url_path_for('topics_files', topic_name=topic_name))
         redirect.status_code = 302
         return redirect
 
@@ -129,7 +129,7 @@ async def topics_delete(request: Request, topic_name: str):
     permission = request.cookies.get('Permission')
     if permission == 'super':
         db: Session = get_db_conn()
-        topics = db.query(Topic).all()
+        topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
         topic = db.query(Topic).filter(Topic.topic_name == topic_name).first()
         db.close()
         return templates.TemplateResponse('dashboard/topics/topics_delete.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
@@ -203,12 +203,14 @@ async def topics_download(topic_name: str, file_name: str):
 
 
 def empty_dir(dir_to_empty):
-    files = os.listdir(dir_to_empty)
-    for file in files:
-        # Ruta completa del archivo
-        file_url = os.path.join(dir_to_empty, file)
-        # Verificar si es un archivo
-        if os.path.isfile(file_url):
-            # Eliminar el archivo
-            os.remove(file_url)
-    os.rmdir(dir_to_empty)
+    # Verificar si es el directorio
+    if os.path.exists(dir_to_empty):
+        files = os.listdir(dir_to_empty)
+        for file in files:
+            # Ruta completa del archivo
+            file_url = os.path.join(dir_to_empty, file)
+            # Verificar si es un archivo
+            if os.path.isfile(file_url):
+                # Eliminar el archivo
+                os.remove(file_url)
+        os.rmdir(dir_to_empty)
