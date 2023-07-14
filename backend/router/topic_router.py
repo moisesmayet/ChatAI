@@ -20,7 +20,7 @@ def topics_list(request: Request):
     db: Session = get_db_conn()
     topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/topics/topics.html', {'request': request, 'topics': topics, 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/topics/topics.html', {'request': request, 'topics': topics, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @topic_app.get('/topics/view/{topic_name}', response_class=HTMLResponse)
@@ -32,7 +32,7 @@ def topics_view(request: Request, topic_name: str):
         topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
         topic = db.query(Topic).filter(Topic.topic_name == topic_name).first()
         db.close()
-        return templates.TemplateResponse('dashboard/topics/topics_view.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/topics/topics_view.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
 
 @topic_app.get('/topics/files/{topic_name}', response_class=HTMLResponse)
@@ -45,7 +45,7 @@ def topics_files(request: Request, topic_name: str):
     topic_files = []
     if os.path.exists(dir_topic):
         topic_files = os.listdir(dir_topic)
-    return templates.TemplateResponse('dashboard/topics/topics_files.html', {'request': request, 'topics': topics, 'topic_files': topic_files, 'topic_name': topic_name, 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/topics/topics_files.html', {'request': request, 'topics': topics, 'topic_files': topic_files, 'topic_name': topic_name, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @topic_app.get('/topics/new', response_class=HTMLResponse)
@@ -55,7 +55,7 @@ async def topics_new(request: Request):
         db: Session = get_db_conn()
         topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
         db.close()
-        return templates.TemplateResponse('dashboard/topics/topics_new.html', {'request': request, 'topics': topics, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/topics/topics_new.html', {'request': request, 'topics': topics, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -94,7 +94,7 @@ async def topics_edit(request: Request, topic_name: str):
         topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
         topic = db.query(Topic).filter(Topic.topic_name == topic_name).first()
         db.close()
-        return templates.TemplateResponse('dashboard/topics/topics_edit.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/topics/topics_edit.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -133,7 +133,7 @@ async def topics_delete(request: Request, topic_name: str):
         topics = db.query(Topic).all()
         topic = db.query(Topic).filter(Topic.topic_name == topic_name).first()
         db.close()
-        return templates.TemplateResponse('dashboard/topics/topics_delete.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/topics/topics_delete.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 

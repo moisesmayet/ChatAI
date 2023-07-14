@@ -18,7 +18,7 @@ def orders_list(request: Request):
     db: Session = get_db_conn()
     orders = db.query(Order).order_by(Order.order_number.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/orders/orders.html', {'request': request, 'orders': orders, 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/orders/orders.html', {'request': request, 'orders': orders, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @order_app.get('/orders/view/{order_number}', response_class=HTMLResponse)
@@ -30,7 +30,7 @@ def orders_view(request: Request, order_number: str):
         orders = db.query(Order).order_by(Order.order_number.asc()).all()
         order = db.query(Order).filter(Order.order_number == order_number).first()
         db.close()
-        return templates.TemplateResponse('dashboard/orders/orders_view.html', {'request': request, 'orders': orders, 'order': order, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/orders/orders_view.html', {'request': request, 'orders': orders, 'order': order, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
 
 @order_app.get('/orders/{order_number}', response_class=HTMLResponse)
@@ -40,5 +40,5 @@ def orders_products(request: Request, order_number: str):
     orders = db.query(Order).order_by(Order.order_number.asc()).all()
     order_products = db.query(Product).filter(Product.order_number == order_number).all()
     db.close()
-    return templates.TemplateResponse('dashboard/orders/orders_products.html', {'request': request, 'orders': orders, 'order_products': order_products, 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/orders/orders_products.html', {'request': request, 'orders': orders, 'order_products': order_products, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 

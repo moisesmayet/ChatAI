@@ -26,10 +26,6 @@ def empty_dir(dir_to_empty):
             os.remove(file_url)
 
 
-def get_boolean(val_bool):
-    return language[val_bool]
-
-
 def agregar_plural(palabra, idioma):
     vocales = ['a', 'e', 'i', 'o', 'u']
     consonantes_especiales = ['s', 'x', 'z']
@@ -230,5 +226,3 @@ parameter = db.query(Parameter).filter(Parameter.parameter_name == 'lang_code').
 lang_code = parameter.parameter_value
 
 db.close()
-
-language = get_language(lang_code)

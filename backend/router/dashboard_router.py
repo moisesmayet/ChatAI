@@ -16,8 +16,8 @@ templates = Jinja2Templates(directory='./frontend/templates')
 
 @dashboard_app.get('/login', status_code=status.HTTP_200_OK)
 async def signin(request: Request):
-    userlang = constants.get_language(constants.lang_code)
-    return templates.TemplateResponse('accounts/login.html', {'request': request, 'language': userlang})
+    language = constants.get_language(constants.lang_code)
+    return templates.TemplateResponse('accounts/login.html', {'request': request, 'language': language})
 
 
 @dashboard_app.post('/login', status_code=status.HTTP_200_OK)
@@ -33,7 +33,7 @@ async def signin(request: Request):
     http3client = http3.AsyncClient()
     response = await http3client.post(request_url, data=form)
 
-    userlang = constants.get_language(constants.lang_code)
+    language = constants.get_language(constants.lang_code)
 
     if response.status_code == 200:
         data = response.json()
@@ -55,7 +55,7 @@ async def signin(request: Request):
                 pemission = 'super'
         redirect.set_cookie('Permission', f'{pemission}')
         redirect.set_cookie('UserId', f'{username}')
-        redirect.set_cookie('UserLang', userlang)
+        redirect.set_cookie('UserLang', language)
         return redirect
 
     if response.status_code == 500:
@@ -63,7 +63,7 @@ async def signin(request: Request):
     else:
         msg = 'Wrong User Id or Password'
 
-    return templates.TemplateResponse("accounts/login.html", {"request": request, 'language': userlang, "msg": msg})
+    return templates.TemplateResponse("accounts/login.html", {"request": request, 'language': language, "msg": msg})
 
 
 @dashboard_app.get('/', response_class=HTMLResponse)
@@ -72,17 +72,18 @@ def home():
 
 
 @dashboard_app.get('/language/{lang}', response_class=HTMLResponse)
-def language(lang: str, request: Request):
-    userlang = constants.get_language(lang)
-    request.set_cookie('UserLang', userlang)
-
-    redirect_url = request.headers.get("referer")  # Obtener la URL de origen
-    return RedirectResponse(redirect_url)
+def change_language(lang: str, request: Request):
+    # Obtener la URL de origen
+    redirect_url = request.headers.get("referer")
+    redirect = RedirectResponse(url=redirect_url)
+    redirect.status_code = 302
+    language = constants.get_language(lang)
+    redirect.set_cookie('UserLang', language)
+    return redirect
 
 
 @dashboard_app.get('/profile', response_class=HTMLResponse)
 async def profile(request: Request):
-    userlang = request.cookies.get('UserLang')
     permission = request.cookies.get('Permission')
     if permission == 'super':
         agent_number = request.cookies.get('UserId')
@@ -91,14 +92,13 @@ async def profile(request: Request):
             agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
             db.close()
 
-            return templates.TemplateResponse('accounts/profile.html', {'request': request, 'agent': agent, 'permission': permission, 'language': userlang})
+            return templates.TemplateResponse('accounts/profile.html', {'request': request, 'agent': agent, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
     return RedirectResponse(url=dashboard_app.url_path_for('signin'))
 
 
 @dashboard_app.post('/profile', response_class=HTMLResponse)
 async def profile(request: Request):
-    userlang = request.cookies.get('UserLang')
     permission = request.cookies.get('Permission')
     if permission == 'super':
         agent_number = request.cookies.get('UserId')
@@ -123,6 +123,6 @@ async def profile(request: Request):
         db: Session = get_db_conn()
         agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
         db.close()
-        return templates.TemplateResponse('accounts/profile.html', {'request': request, 'agent': agent, 'permission': permission, 'language': userlang, 'msg': msg})
+        return templates.TemplateResponse('accounts/profile.html', {'request': request, 'agent': agent, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'msg': msg})
 
     return RedirectResponse(url=dashboard_app.url_path_for('signin'))

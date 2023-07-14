@@ -20,7 +20,7 @@ def agents_list(request: Request):
     db: Session = get_db_conn()
     agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/agents/agents.html', {'request': request, 'agents': agents, 'agent': '', 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/agents/agents.html', {'request': request, 'agents': agents, 'agent': '', 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @agent_app.get('/agents/view/{agent_number}', response_class=HTMLResponse)
@@ -32,7 +32,7 @@ def agents_view(request: Request, agent_number: str):
         agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
         agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
         db.close()
-        return templates.TemplateResponse('dashboard/agents/agents_view.html', {'request': request, 'agents': agents, 'agent': agent, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/agents/agents_view.html', {'request': request, 'agents': agents, 'agent': agent, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
 
 @agent_app.get('/agents/messages/{agent_number}', response_class=HTMLResponse)
@@ -42,7 +42,7 @@ def agents_queries(request: Request, agent_number: str):
     agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
     agent_queries = db.query(Query).filter(Query.agent_number == agent_number).order_by(Query.id.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/agents/agents_queries.html', {'request': request, 'agents': agents, 'agent_queries': agent_queries, 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/agents/agents_queries.html', {'request': request, 'agents': agents, 'agent_queries': agent_queries, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @agent_app.get('/agents/new', response_class=HTMLResponse)
@@ -52,7 +52,7 @@ async def agents_new(request: Request):
         db: Session = get_db_conn()
         agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
         db.close()
-        return templates.TemplateResponse('dashboard/agents/agents_new.html', {'request': request, 'agents': agents, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/agents/agents_new.html', {'request': request, 'agents': agents, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -93,7 +93,7 @@ async def agents_new(request: Request):
         else:
             msg = f'Exists other {constants.alias_expert} with same whatsapp'
             agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
-            return templates.TemplateResponse('dashboard/agents/agents_new.html', {'request': request, 'agents': agents, 'permission': permission, 'language': constants.language, 'msg': msg})
+            return templates.TemplateResponse('dashboard/agents/agents_new.html', {'request': request, 'agents': agents, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'msg': msg})
 
         db.close()
 
@@ -111,7 +111,7 @@ async def agents_edit(request: Request, agent_number: str):
         agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
         agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
         db.close()
-        return templates.TemplateResponse('dashboard/agents/agents_edit.html', {'request': request, 'agents': agents, 'agent': agent, 'agent_logeado': agent_logeado, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/agents/agents_edit.html', {'request': request, 'agents': agents, 'agent': agent, 'agent_logeado': agent_logeado, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -162,7 +162,7 @@ async def agents_edit(request: Request, agent_number: str):
             return templates.TemplateResponse('dashboard/agents/agents_edit.html',
                                               {'request': request, 'agents': agents, 'agent': agent,
                                                'agent_logeado': agent_logeado,
-                                               'constants.alias_expert': constants.alias_expert.capitalize(), 'permission': permission, 'language': constants.language, 'msg': msg})
+                                               'constants.alias_expert': constants.alias_expert.capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'msg': msg})
         db.close()
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))

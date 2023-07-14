@@ -20,7 +20,7 @@ def parameters_list(request: Request):
     db: Session = get_db_conn()
     parameters = db.query(Parameter).order_by(Parameter.parameter_name.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/parameters/parameters.html', {'request': request, 'parameters': parameters, 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/parameters/parameters.html', {'request': request, 'parameters': parameters, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @parameter_app.get('/parameters/view/{parameter_name}', response_class=HTMLResponse)
@@ -33,15 +33,16 @@ def parameters_view(request: Request, parameter_name: str):
         parameter = db.query(Parameter).filter(Parameter.parameter_name == parameter_name).first()
         db.close()
 
+        language = eval(request.cookies.get('UserLang'))
         combo_values = {}
         lang_alias = {}
         alias = parameter_name.split('_')
         if alias[0] == 'alias':
             lang_alias = constants.get_alias(alias[1])
         else:
-            combo_values = get_combo(parameter_name, parameter.parameter_value)
+            combo_values = get_combo(language, parameter_name, parameter.parameter_value)
 
-        return templates.TemplateResponse('dashboard/parameters/parameters_view.html', {'request': request, 'parameters': parameters, 'parameter': parameter, 'lang_alias': lang_alias, 'combo_values': combo_values, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/parameters/parameters_view.html', {'request': request, 'parameters': parameters, 'parameter': parameter, 'lang_alias': lang_alias, 'combo_values': combo_values, 'permission': permission, 'language': language})
 
 
 @parameter_app.get('/parameters/new', response_class=HTMLResponse)
@@ -51,7 +52,7 @@ async def parameters_new(request: Request):
         db: Session = get_db_conn()
         parameters = db.query(Parameter).order_by(Parameter.parameter_name.asc()).all()
         db.close()
-        return templates.TemplateResponse('dashboard/parameters/parameters_new.html', {'request': request, 'parameters': parameters, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/parameters/parameters_new.html', {'request': request, 'parameters': parameters, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -84,15 +85,16 @@ async def parameters_edit(request: Request, parameter_name: str):
         parameter = db.query(Parameter).filter(Parameter.parameter_name == parameter_name).first()
         db.close()
 
+        language = eval(request.cookies.get('UserLang'))
         combo_values = {}
         lang_alias = {}
         alias = parameter_name.split('_')
         if alias[0] == 'alias':
             lang_alias = constants.get_alias(alias[1])
         else:
-            combo_values = get_combo(parameter_name, parameter.parameter_value)
+            combo_values = get_combo(language, parameter_name, parameter.parameter_value)
 
-        return templates.TemplateResponse('dashboard/parameters/parameters_edit.html', {'request': request, 'parameters': parameters, 'parameter': parameter, 'lang_alias': lang_alias, 'combo_values': combo_values, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/parameters/parameters_edit.html', {'request': request, 'parameters': parameters, 'parameter': parameter, 'lang_alias': lang_alias, 'combo_values': combo_values, 'permission': permission, 'language': language})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -137,18 +139,18 @@ async def parameters_edit(request: Request, parameter_name: str):
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
 
-def get_combo(parameter_name, parameter_value):
+def get_combo(language, parameter_name, parameter_value):
     combo_values = []
     if parameter_name == 'lang_code':
         combo_values = get_language_names(parameter_value)
     else:
         if parameter_name == 'messages_translator' or parameter_name == 'messages_voice':
             if parameter_value == 'si':
-                combo_values.append({'value': 'si', 'name': constants.get_boolean('yes'), 'selected': True})
-                combo_values.append({'value': 'no', 'name': constants.get_boolean('no'), 'selected': False})
+                combo_values.append({'value': 'si', 'name': language['yes'], 'selected': True})
+                combo_values.append({'value': 'no', 'name': language['no'], 'selected': False})
             else:
-                combo_values.append({'value': 'si', 'name': constants.get_boolean('yes'), 'selected': False})
-                combo_values.append({'value': 'no', 'name': constants.get_boolean('no'), 'selected': True})
+                combo_values.append({'value': 'si', 'name': language['yes'], 'selected': False})
+                combo_values.append({'value': 'no', 'name': language['no'], 'selected': True})
         else:
             if parameter_name == 'transcribe_api':
                 if parameter_value == 'openai':
@@ -177,38 +179,29 @@ def get_language_names(parameter_value):
 
 
 def refresh_language(parameter_name, parameter_value):
-    update_language = False
     if parameter_name == 'lang_code':
         constants.lang_code = parameter_value
-        update_language = True
     else:
         if parameter_name == 'alias_user':
             constants.alias_user = parameter_value
-            update_language = True
         else:
             if parameter_name == 'alias_expert':
                 constants.alias_expert = parameter_value
-                update_language = True
             else:
                 if parameter_name == 'alias_order':
                     constants.alias_order = parameter_value
-                    update_language = True
                 else:
                     if parameter_name == 'alias_item':
                         constants.alias_item = parameter_value
-                        update_language = True
                     else:
                         if parameter_name == 'alias_offer':
                             constants.alias_offer = parameter_value
-                            update_language = True
                         else:
                             if parameter_name == 'alias_ai':
                                 constants.alias_ai = parameter_value
-                                update_language = True
                             else:
                                 if parameter_name == 'alias_business':
                                     constants.alias_business = parameter_value
-                                    update_language = True
                                 else:
                                     if parameter_name == 'eleven_api_key':
                                         constants.eleven_api_key = parameter_value
@@ -252,5 +245,3 @@ def refresh_language(parameter_name, parameter_value):
                                                                                         if parameter_name == 'whasapp_url':
                                                                                             constants.whasapp_url = parameter_value
 
-    if update_language:
-        constants.language = constants.refresh_language()

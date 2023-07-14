@@ -21,7 +21,7 @@ def users_list(request: Request):
     db: Session = get_db_conn()
     users = db.query(User).order_by(User.user_name.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/users/users.html', {'request': request, 'users': users, 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/users/users.html', {'request': request, 'users': users, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @user_app.get('/users/view/{user_number}', response_class=HTMLResponse)
@@ -33,7 +33,7 @@ def users_view(request: Request, user_number: str):
         users = db.query(User).order_by(User.user_name.asc()).all()
         user = db.query(User).filter(User.user_number == user_number).first()
         db.close()
-        return templates.TemplateResponse('dashboard/users/users_view.html', {'request': request, 'users': users, 'user': user, 'permission': permission, 'language': constants.language})
+        return templates.TemplateResponse('dashboard/users/users_view.html', {'request': request, 'users': users, 'user': user, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
 
 @user_app.get('/users/messages/{user_number}', response_class=HTMLResponse)
@@ -44,7 +44,7 @@ def users_messages(request: Request, user_number: str):
     users = db.query(User).order_by(User.user_name.asc()).all()
     user_messages = db.query(Message).filter(Message.user_number == user_number).order_by(Message.id.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/users/users_messages.html', {'request': request, 'users': users, 'user_messages': user_messages, 'user_number': user_number, 'user_whatsapp': user.user_whatsapp, 'permission': request.cookies.get('Permission'), 'language': constants.language})
+    return templates.TemplateResponse('dashboard/users/users_messages.html', {'request': request, 'users': users, 'user_messages': user_messages, 'user_number': user_number, 'user_whatsapp': user.user_whatsapp, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @user_app.get('/users/edit/{user_number}', response_class=HTMLResponse)
@@ -57,7 +57,7 @@ async def users_edit(request: Request, user_number: str):
         db.close()
         return templates.TemplateResponse('dashboard/users/users_edit.html',
                                           {'request': request, 'users': users, 'user': user,
-                                           'constants.alias_user': constants.alias_user.capitalize(), 'permission': permission, 'language': constants.language})
+                                           'constants.alias_user': constants.alias_user.capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -87,7 +87,7 @@ async def users_edit(request: Request, user_number: str):
             users = db.query(User).order_by(User.user_name.asc()).all()
             return templates.TemplateResponse('dashboard/users/users_edit.html',
                                               {'request': request, 'users': users, 'user': user,
-                                               'constants.alias_user': constants.alias_user.capitalize(), 'permission': permission, 'language': constants.language,
+                                               'constants.alias_user': constants.alias_user.capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')),
                                                'msg': msg})
         db.close()
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
