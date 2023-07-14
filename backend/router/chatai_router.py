@@ -276,7 +276,7 @@ def get_anwser(query_message, query_role, query_number, query_usuario, query_idw
             behavior = behavior_user
         else:
             behavior = behavior_agent
-        if query_usuario == '':
+        if query_usuario is None or query_usuario == '':
             behavior = behavior.replace('{alias_user}', alias_user)
         else:
             behavior = behavior.replace('{alias_user}', query_usuario)
