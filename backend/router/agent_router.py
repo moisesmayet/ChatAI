@@ -42,7 +42,7 @@ def agents_queries(request: Request, agent_number: str):
     agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
     agent_queries = db.query(Query).filter(Query.agent_number == agent_number).order_by(Query.id.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/agents/agents_queries.html', {'request': request, 'agents': agents, 'agent_queries': agent_queries, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
+    return templates.TemplateResponse('dashboard/agents/agents_queries.html', {'request': request, 'agents': agents, 'agent_queries': agent_queries, 'agent_number': agent_number, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @agent_app.get('/agents/new', response_class=HTMLResponse)

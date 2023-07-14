@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from backend.config import constants
 from backend.router.auth.auth_router import auth_required
 from backend.model.model import Order, Product
 from backend.config.db import get_db_conn
