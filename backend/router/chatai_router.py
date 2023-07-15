@@ -763,8 +763,7 @@ def notify(notify_number, notify_whatsapp, notify_usuario, notify_idwa):
             f'Hola {agent_name}, el {alias_user} {notify_usuario} ha solicitado hablar con un {alias_expert}.']
 
         # Se le envía al agente las preguntas que el usuario realizó en el día de actual
-        messages = db.query(Message).filter(Message.user_number == notify_number).order_by(Message.id.desc()).limit(
-            msg_count).all()
+        messages = db.query(Message).filter(Message.user_number == notify_number).order_by(Message.id.desc()).limit(msg_count).all()
         questions = [message.msg_sent for message in messages]
         if questions:
             if len(questions) > 1:
@@ -773,8 +772,9 @@ def notify(notify_number, notify_whatsapp, notify_usuario, notify_idwa):
                 questions.reverse()
             else:
                 agent_message.append(f'A continuación te muestro el útimo mesaje:')
+
             for question in questions:
-                agent_message.append(question[0])
+                agent_message.append(question)
 
         if notify_whatsapp != '':
             agent_message.append(f'El número de contacto del {alias_user} {notify_usuario} es +{notify_whatsapp}.')
