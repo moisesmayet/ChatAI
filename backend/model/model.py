@@ -51,9 +51,9 @@ class Message(db_conn):
     id = Column(Integer, primary_key=True)
     msg_type = Column(String(10))
     user_number = Column(String(254), ForeignKey("users.user_number"))
-    msg_received = Column(String(1000))
+    msg_sent = Column(Text)
+    msg_received = Column(Text)
     msg_code = Column(String(1000))
-    msg_sent = Column(String(1000))
     msg_date = Column(DateTime, default=datetime.utcnow)
     msg_origin = Column(String(10))
 
@@ -94,8 +94,8 @@ class Query(db_conn):
 
     id = Column(Integer, primary_key=True)
     query_code = Column(String(1000))
-    query_sent = Column(String(1000))
-    query_received = Column(String(1000))
+    query_sent = Column(Text)
+    query_received = Column(Text)
     query_date = Column(DateTime, default=datetime.utcnow)
     query_type = Column(String(10))
     agent_number = Column(String(254), ForeignKey("agents.agent_number"))
