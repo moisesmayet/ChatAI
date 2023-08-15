@@ -65,9 +65,11 @@
                       <input id="send_chat" name="send_chat" type="image" src="{{ url_for('static', path='img/send.svg') }}" alt="send chat">
                   </div>
 
-                  <div class="mt-n4 float-start">
-                    <button id="close_chat"  name="close_chat" type="submit" class="btn bg-gradient-danger w-100 my-4 mb-2">{{ language.closechat }}</button>
-                  </div>
+                  {% if button_end %}
+                      <div class="mt-n4 float-start">
+                        <button id="close_chat"  name="close_chat" type="submit" class="btn bg-gradient-danger w-100 my-4 mb-2">{{ language.closechat }}</button>
+                      </div>
+                  {% endif %}
                 </form>
             </div>
         </div>

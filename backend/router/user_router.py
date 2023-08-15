@@ -41,10 +41,16 @@ def users_view(request: Request, user_number: str):
 def users_messages(request: Request, user_number: str):
     db: Session = get_db_conn()
     user = db.query(User).filter(User.user_number == user_number).first()
+    last_message = db.query(Message).filter(Message.user_number == user_number).order_by(Message.id.desc()).first()
+    user.use_lastmsg = last_message.id
+    db.merge(user)
+    db.commit()
+
     users = db.query(User).order_by(User.user_name.asc()).all()
     user_messages = db.query(Message).filter(Message.user_number == user_number).order_by(Message.id.asc()).all()
+
     db.close()
-    return templates.TemplateResponse('dashboard/users/users_messages.html', {'request': request, 'users': users, 'user_messages': user_messages, 'user_number': user_number, 'user_whatsapp': user.user_whatsapp, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
+    return templates.TemplateResponse('dashboard/users/users_messages.html', {'request': request, 'users': users, 'user_messages': user_messages, 'user_number': user_number, 'user_whatsapp': user.user_whatsapp, 'button_end': user.user_wait, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
 
 
 @user_app.get('/users/edit/{user_number}', response_class=HTMLResponse)
