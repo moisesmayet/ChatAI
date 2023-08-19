@@ -1,4 +1,5 @@
 import os
+import shutil
 from fastapi import APIRouter, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
@@ -19,7 +20,7 @@ def topics_list(request: Request):
     db: Session = get_db_conn()
     topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/topics/topics.html', {'request': request, 'topics': topics, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
+    return templates.TemplateResponse('dashboard/topics/topics.html', {'request': request, 'topics': topics, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
 
 @topic_app.get('/topics/view/{topic_name}', response_class=HTMLResponse)
@@ -31,7 +32,7 @@ def topics_view(request: Request, topic_name: str):
         topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
         topic = db.query(Topic).filter(Topic.topic_name == topic_name).first()
         db.close()
-        return templates.TemplateResponse('dashboard/topics/topics_view.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/topics/topics_view.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
 
 @topic_app.get('/topics/files/{topic_name}', response_class=HTMLResponse)
@@ -44,7 +45,7 @@ def topics_files(request: Request, topic_name: str):
     topic_files = []
     if os.path.exists(dir_topic):
         topic_files = os.listdir(dir_topic)
-    return templates.TemplateResponse('dashboard/topics/topics_files.html', {'request': request, 'topics': topics, 'topic_files': topic_files, 'topic_name': topic_name, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
+    return templates.TemplateResponse('dashboard/topics/topics_files.html', {'request': request, 'topics': topics, 'topic_files': topic_files, 'topic_name': topic_name, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
 
 @topic_app.get('/topics/new', response_class=HTMLResponse)
@@ -54,7 +55,7 @@ async def topics_new(request: Request):
         db: Session = get_db_conn()
         topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
         db.close()
-        return templates.TemplateResponse('dashboard/topics/topics_new.html', {'request': request, 'topics': topics, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/topics/topics_new.html', {'request': request, 'topics': topics, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -93,7 +94,7 @@ async def topics_edit(request: Request, topic_name: str):
         topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
         topic = db.query(Topic).filter(Topic.topic_name == topic_name).first()
         db.close()
-        return templates.TemplateResponse('dashboard/topics/topics_edit.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/topics/topics_edit.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -132,7 +133,7 @@ async def topics_delete(request: Request, topic_name: str):
         topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
         topic = db.query(Topic).filter(Topic.topic_name == topic_name).first()
         db.close()
-        return templates.TemplateResponse('dashboard/topics/topics_delete.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/topics/topics_delete.html', {'request': request, 'topics': topics, 'topic': topic, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -147,9 +148,9 @@ async def topics_delete(request: Request, topic_name: str):
         db.close()
 
         dir_to_empty = os.path.join("backend", "prompt", topic_name)
-        empty_dir(dir_to_empty)
+        shutil.rmtree(dir_to_empty)
         dir_to_empty = os.path.join("backend", "data_index", topic_name)
-        empty_dir(dir_to_empty)
+        shutil.rmtree(dir_to_empty)
 
         redirect = RedirectResponse(url=topic_app.url_path_for('topics_list'))
         redirect.status_code = 302
@@ -200,17 +201,3 @@ async def topics_download(topic_name: str, file_name: str):
 
     # Utiliza la clase FileResponse para enviar el archivo al navegador
     return FileResponse(file_path, filename=file_name, media_type='application/octet-stream')
-
-
-def empty_dir(dir_to_empty):
-    # Verificar si es el directorio
-    if os.path.exists(dir_to_empty):
-        files = os.listdir(dir_to_empty)
-        for file in files:
-            # Ruta completa del archivo
-            file_url = os.path.join(dir_to_empty, file)
-            # Verificar si es un archivo
-            if os.path.isfile(file_url):
-                # Eliminar el archivo
-                os.remove(file_url)
-        os.rmdir(dir_to_empty)

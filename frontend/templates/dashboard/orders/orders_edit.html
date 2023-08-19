@@ -1,0 +1,96 @@
+{% extends 'dashboard/orders/orders_sidepanel.html' %}
+
+{% block sidepanel %}
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card">
+            <div class="card-header pb-0">
+                <h6>{{ language.view }}</h6>
+            </div>
+
+            <div>
+                <a href="{{ url_for('orders_list') }}" class="float-end pe-3">
+                  <i class="fa fa-times me-sm-1"></i>
+                </a>
+            </div>
+
+            <div class="card-body p-3">
+                <form method="POST" action="{{ url_for('orders_edit', order_number=order.order_number) }}">
+                  <label>{{ language.order }}</label>
+                  <div class="mb-3">
+                    <input
+                      id="order_number"
+                      class="form-control"
+                      type="text"
+                      name="order_number"
+                      value="{{ order.order_number }}"
+                      disabled
+                    >
+                  </div>
+
+                  <label>{{ language.user }}</label>
+                  <div class="mb-3">
+                    <div class="mb-3">
+                        <input
+                              id="user_number"
+                              class="form-control"
+                              type="text"
+                              name="user_number"
+                              value="{{ order.user_number }}"
+                              disabled
+                        >
+                    </div>
+                  </div>
+
+                  <label>{{ language.datestart }}</label>
+                  <div class="mb-3">
+                    <div class="mb-3">
+                        <input
+                              id="order_start"
+                              class="form-control"
+                              type="text"
+                              name="order_start"
+                              value="{{ order.order_start.strftime('%Y-%m-%d %H:%M') }}"
+                              disabled
+                        >
+                    </div>
+                  </div>
+
+                  <label>{{ language.dateend }}</label>
+                  <div class="mb-3">
+                    <div class="mb-3">
+                        <input
+                              id="order_end"
+                              class="form-control"
+                              type="text"
+                              name="order_end"
+                              {% if order.order_end != None %}
+                                value="{{ order.order_end.strftime('%Y-%m-%d %H:%M') }}"
+                              {% else %}
+                                value=""
+                              {% endif %}
+                              disabled
+                        >
+                    </div>
+                  </div>
+
+                  <label>{{ language.status }}</label>
+                  <div class="mb-3">
+                    <div class="mb-3">
+                        <select id="status_code" name="status_code" class="form-select" aria-label="Select option">
+                              {% for status in statuses %}
+                                <option value="{{ status.status_code }}" {% if status.status_code == order.status_code %}selected{% endif %}>{{ status.status_name }}</option>
+                              {% endfor %}
+                        </select>
+                    </div>
+                  </div>
+
+                  <div class="float-end">
+                    <button type="submit" name="orders_edit" class="btn bg-gradient-dark w-100 my-4 mb-2">{{ language.confirm }}</button>
+                  </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+{% endblock sidepanel %}

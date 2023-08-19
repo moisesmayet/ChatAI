@@ -1,9 +1,8 @@
 import json
 import os
+import shutil
 import openai
 from elevenlabs import set_api_key
-
-import backend.main
 from backend.config.db import get_db_conn
 from sqlalchemy.orm import Session
 from backend.model.model import Parameter, Topic, Behavior
@@ -11,19 +10,11 @@ from backend.model.model import Parameter, Topic, Behavior
 # Directorio de persistencia del índice
 index_persist_dir = f'backend/data_index'
 
+# Directorio de prompt
+prompt_url = f'backend/prompt'
+
 # Directorio de media
 media_url = f'backend/media'
-
-
-def empty_dir(dir_to_empty):
-    files = os.listdir(dir_to_empty)
-    for del_file in files:
-        # Ruta completa del archivo
-        file_url = os.path.join(dir_to_empty, del_file)
-        # Verificar si es un archivo
-        if os.path.isfile(file_url):
-            # Eliminar el archivo
-            os.remove(file_url)
 
 
 def agregar_plural(palabra, idioma):
@@ -137,6 +128,14 @@ server_url = parameter.parameter_value
 parameter = db.query(Parameter).filter(Parameter.parameter_name == 'algorithm_hash').first()
 algorithm_hash = parameter.parameter_value
 
+# menu
+menu = {}
+parameter = db.query(Parameter).filter(Parameter.parameter_name == 'menu_orders').first()
+if parameter.parameter_value == 'si':
+    menu['menu_orders'] = True
+else:
+    menu['menu_orders'] = False
+
 # Whasapp token
 parameter = db.query(Parameter).filter(Parameter.parameter_name == 'whasapp_id').first()
 whasapp_id = parameter.parameter_value
@@ -183,6 +182,7 @@ parameter = db.query(Parameter).filter(Parameter.parameter_name == 'alias_busine
 alias_business = parameter.parameter_value
 
 # Limpiar directorios
+topic_names = []
 topic_list = {}
 topic_index = {}
 topic_context = ''
@@ -192,16 +192,31 @@ for i, item in enumerate(topics):
     topic = item.topic_name
     context_value = item.topic_context
     topic_context += f'", "<{i}>: ' + context_value.replace(',', f' \\')
+    topic_names.append(topic)
     topic_list[str(i)] = topic
     topic_index[topic] = ''
+    directory = f'{index_persist_dir}/{topic}'
+    exists_index = os.path.exists(directory)
     if item.topic_rebuild:
-        directory = f'{index_persist_dir}/{topic}'
         # Si existe el directorio
-        if os.path.exists(directory):
+        if exists_index:
             persist_dir = os.path.join(os.getcwd(), f'{index_persist_dir}/{topic}/')
-            empty_dir(persist_dir)
+            shutil.rmtree(persist_dir)
         else:
             os.makedirs(directory)
+    else:
+        if item.topic_system and exists_index:
+            persist_dir = os.path.join(os.getcwd(), f'{index_persist_dir}/{topic}/')
+            shutil.rmtree(persist_dir)
+
+
+subdirectories = next(os.walk(prompt_url))[1]
+# Eliminar los directorios que no están en la lista de topics
+for subdir in subdirectories:
+    if subdir not in topic_names:
+        dir_to_delete = os.path.join(os.getcwd(), f'{prompt_url}/{subdir}/')
+        shutil.rmtree(dir_to_delete)
+
 topic_context += f'"'
 topic_context = topic_context.replace('{alias_order}', alias_order)
 topic_context = topic_context.replace('{alias_item}', alias_item)

@@ -18,7 +18,7 @@ def behaviors_list(request: Request):
     db: Session = get_db_conn()
     behaviors = db.query(Behavior).order_by(Behavior.behavior_code.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/behaviors/behaviors.html', {'request': request, 'behaviors': behaviors, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
+    return templates.TemplateResponse('dashboard/behaviors/behaviors.html', {'request': request, 'behaviors': behaviors, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
 
 @behavior_app.get('/behaviors/view/{behavior_code}', response_class=HTMLResponse)
@@ -30,7 +30,7 @@ def behaviors_view(request: Request, behavior_code: str):
         behaviors = db.query(Behavior).order_by(Behavior.behavior_code.asc()).all()
         behavior = db.query(Behavior).filter(Behavior.behavior_code == behavior_code).first()
         db.close()
-        return templates.TemplateResponse('dashboard/behaviors/behaviors_view.html', {'request': request, 'behaviors': behaviors, 'behavior': behavior, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/behaviors/behaviors_view.html', {'request': request, 'behaviors': behaviors, 'behavior': behavior, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
 
 @behavior_app.get('/behaviors/new', response_class=HTMLResponse)
@@ -40,7 +40,7 @@ async def behaviors_new(request: Request):
         db: Session = get_db_conn()
         behaviors = db.query(Behavior).order_by(Behavior.behavior_code.asc()).all()
         db.close()
-        return templates.TemplateResponse('dashboard/behaviors/behaviors_new.html', {'request': request, 'behaviors': behaviors, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/behaviors/behaviors_new.html', {'request': request, 'behaviors': behaviors, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -72,7 +72,7 @@ async def behaviors_edit(request: Request, behavior_code: str):
         behaviors = db.query(Behavior).order_by(Behavior.behavior_code.asc()).all()
         behavior = db.query(Behavior).filter(Behavior.behavior_code == behavior_code).first()
         db.close()
-        return templates.TemplateResponse('dashboard/behaviors/behaviors_edit.html', {'request': request, 'behaviors': behaviors, 'behavior': behavior, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/behaviors/behaviors_edit.html', {'request': request, 'behaviors': behaviors, 'behavior': behavior, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -104,7 +104,7 @@ async def behaviors_delete(request: Request, behavior_code: str):
         behaviors = db.query(Behavior).order_by(Behavior.behavior_code.asc()).all()
         behavior = db.query(Behavior).filter(Behavior.behavior_code == behavior_code).first()
         db.close()
-        return templates.TemplateResponse('dashboard/behaviors/behaviors_delete.html', {'request': request, 'behaviors': behaviors, 'behavior': behavior, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/behaviors/behaviors_delete.html', {'request': request, 'behaviors': behaviors, 'behavior': behavior, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 

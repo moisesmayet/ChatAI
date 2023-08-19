@@ -56,6 +56,7 @@ async def signin(request: Request):
         redirect.set_cookie('Permission', f'{pemission}')
         redirect.set_cookie('UserId', f'{username}')
         redirect.set_cookie('UserLang', language)
+        redirect.set_cookie('Menu', constants.menu)
         return redirect
 
     if response.status_code == 500:
@@ -92,7 +93,7 @@ async def profile(request: Request):
             agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
             db.close()
 
-            return templates.TemplateResponse('accounts/profile.html', {'request': request, 'agent': agent, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+            return templates.TemplateResponse('accounts/profile.html', {'request': request, 'agent': agent, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(url=dashboard_app.url_path_for('signin'))
 
@@ -123,6 +124,6 @@ async def profile(request: Request):
         db: Session = get_db_conn()
         agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
         db.close()
-        return templates.TemplateResponse('accounts/profile.html', {'request': request, 'agent': agent, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'msg': msg})
+        return templates.TemplateResponse('accounts/profile.html', {'request': request, 'agent': agent, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'msg': msg})
 
     return RedirectResponse(url=dashboard_app.url_path_for('signin'))

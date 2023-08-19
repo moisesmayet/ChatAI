@@ -45,11 +45,11 @@
               <div class="mb-3">
                 <div class="mb-3">
                     <input
-                          id="status_code"
+                          id="order_start"
                           class="form-control"
                           type="text"
-                          name="status_code"
-                          value="{{ order.status_code }}"
+                          name="order_start"
+                          value="{{ order.order_start.strftime('%Y-%m-%d %H:%M') }}"
                           disabled
                     >
                 </div>
@@ -59,11 +59,15 @@
               <div class="mb-3">
                 <div class="mb-3">
                     <input
-                          id="order_start"
+                          id="order_end"
                           class="form-control"
                           type="text"
-                          name="order_start"
-                          value="{{ order.order_start }}"
+                          name="order_end"
+                          {% if order.order_end != None %}
+                            value="{{ order.order_end.strftime('%Y-%m-%d %H:%M') }}"
+                          {% else %}
+                            value=""
+                          {% endif %}
                           disabled
                     >
                 </div>
@@ -72,14 +76,11 @@
               <label>{{ language.status }}</label>
               <div class="mb-3">
                 <div class="mb-3">
-                    <input
-                          id="order_end"
-                          class="form-control"
-                          type="text"
-                          name="order_end"
-                          value="{{ order.order_end }}"
-                          disabled
-                    >
+                    <select id="status_code" name="status_code" class="form-select" aria-label="Select option" disabled>
+                          {% for status in statuses %}
+                            <option value="{{ status.status_code }}" {% if status.status_code == order.status_code %}selected{% endif %}>{{ status.status_name }}</option>
+                          {% endfor %}
+                    </select>
                 </div>
               </div>
             </div>

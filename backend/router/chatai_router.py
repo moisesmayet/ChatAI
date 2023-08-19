@@ -2,10 +2,12 @@ import csv
 import json
 import os
 import re
+import shutil
 import openai
 import pydub
 import requests
 import speech_recognition as sr
+import pandas as pd
 from datetime import datetime, timedelta
 from elevenlabs import generate, save
 from fastapi import APIRouter, Request
@@ -78,6 +80,7 @@ async def webhook_whatsapp(request: Request):
     if 'entry' in data and len(data['entry']) > 0 and 'changes' in data['entry'][0] and len(
             data['entry'][0]['changes']) > 0:
         # Se recupera el mensaje del JSON
+        # ai_whatsapp = data['entry'][0]['changes'][0]['value']['metadata']['display_phone_number']
         message = ''
         message_data = data['entry'][0]['changes'][0]['value'].get('messages')
         if message_data:
@@ -101,7 +104,7 @@ async def webhook_whatsapp(request: Request):
                         # Elimino el directorio
                         if os.path.exists(local_media):
                             # Eliminar el directorio y su contenido
-                            empty_dir(local_media)
+                            shutil.rmtree(local_media)
                         else:
                             os.makedirs(local_media)
 
@@ -127,34 +130,60 @@ async def webhook_whatsapp(request: Request):
                         message = transcribe_audio(audio_filename)
 
                         # Elimina los archivos de audio descargados
-                        empty_dir(local_media)
+                        shutil.rmtree(local_media)
 
                         # Notificar que se va a escuchar el audio
                         send_text([f'Voy a escuchar el audio que me enviaste y en breve te respondo.'], user_whatsapp,
                                   idwa)
                 else:
-                    send_text([f'Solo puedo ayudarte si me escribes textos'], user_whatsapp, idwa)
-                    return JSONResponse({'status': 'success'}, status_code=200)
+                    if message_type == 'order':
+                        # Obtener el texto del mensaje
+                        products = message_data[0]['order']['product_items']
+                        save_order(user_whatsapp)
+                        order_number = get_order(user_whatsapp)
+                        for product in products:
+                            price = product['item_price']
+                            values = get_product_excel(product['product_retailer_id'])
+                            values.append(price)
+                            values.append(price)
+                            values.append(product['currency'])
+                            values.append('')
+                            values.append('Unidad')
+                            values.append(product['quantity'])
+                            values.append(order_number)
+                            save_product(values)
+
+                        anwsers = f'Su orden de compra ({order_number}) fue enviada satisfactoriamente'
+                        send_text([anwsers], user_whatsapp, idwa)
+                        save_message(user_whatsapp, 'producto(s)', anwsers, idwa, message_type, 'whatsapp', datetime.now())
+                        return JSONResponse({'status': 'success'}, status_code=200)
+                    else:
+                        if message_type != 'reaction':
+                            anwsers = f'Solo puedo ayudarte si me escribes textos'
+                            send_text([anwsers], user_whatsapp, idwa)
+                            save_message(user_whatsapp, 'reacción', 'reacción', idwa, message_type, 'whatsapp', datetime.now())
+                            return JSONResponse({'status': 'success'}, status_code=200)
 
             # Revisar que haya mensaje
-            if message is not None:
+            if len(message) > 0:
                 user_response = create_user(user_whatsapp, user_whatsapp, alias_user)
 
                 reply = reply_message(message, message_type, user_response['number'],
-                                      user_response['usuario'], user_response['user_completed'], idwa, 'whatsapp')
+                                      user_response['usuario'], user_response['user_completed'], 'whatsapp', idwa)
                 anwsers = reply['anwsers']
 
                 # Mensajes al usuario
-                if message_type == 'text':
-                    send_text(anwsers, user_whatsapp, idwa)
-                else:
-                    anwsers_str = ' '.join(anwsers)
-                    send_voice(anwsers_str, user_whatsapp, filename, idwa)
-                    if os.path.exists(audio_awnser):
-                        os.remove(audio_awnser)
+                if reply['respond']:
+                    if message_type == 'text':
+                        send_text(anwsers, user_whatsapp, idwa)
+                    else:
+                        anwsers_str = ' '.join(anwsers)
+                        send_voice(anwsers_str, user_whatsapp, filename, idwa)
+                        if os.path.exists(audio_awnser):
+                            os.remove(audio_awnser)
 
-                if reply['notify']:
-                    notify(user_response['number'], user_response['whatsapp'], user_response['usuario'], idwa)
+                    if reply['notify']:
+                        notify(user_response['number'], user_response['whatsapp'], user_response['usuario'], idwa)
 
                 # Retornar la respuesto en un JSON
                 return JSONResponse({'status': 'success'}, status_code=200)
@@ -164,7 +193,8 @@ async def webhook_whatsapp(request: Request):
 
 
 @chatai_app.post('/webhookweb')
-async def webhook_web(userid: UserId, username: UserName, userwhatsapp: UserWhatsapp, question: Question, secretkey: SecretKey):
+async def webhook_web(userid: UserId, username: UserName, userwhatsapp: UserWhatsapp, question: Question,
+                      secretkey: SecretKey):
     if question.web_question != 'string' and question.web_question != '':
         if secretkey.web_secretkey == server_key:
             current_datetime = datetime.now()
@@ -180,7 +210,7 @@ async def webhook_web(userid: UserId, username: UserName, userwhatsapp: UserWhat
             user_response = create_user(userid.web_userid, userwhatsapp.web_userwhatsapp, username.web_username)
 
             reply = reply_message(question.web_question, 'text', user_response['number'], user_response['usuario'],
-                                  user_response['user_completed'], idwa, 'web')
+                                  user_response['user_completed'], 'web', idwa)
             anwser = ' '.join(reply['anwsers'])
 
             if reply['notify']:
@@ -203,9 +233,10 @@ async def serve_media(filename: str):
     return FileResponse(file_path)
 
 
-def reply_message(message, message_type, number_user, usuario, user_completed, idwa, origin):
+def reply_message(message, message_type, number_user, usuario, user_completed, origin, idwa):
     anwsers = []
     agent_notify = False
+    send_anwser = True
 
     # Conectamos a la base de datos
     db: Session = get_db_conn()
@@ -221,9 +252,10 @@ def reply_message(message, message_type, number_user, usuario, user_completed, i
 
             watting = watting_agent(number_user)
             if not watting:
-                reply = get_anwser(message, role_wa, number_user, usuario, idwa)
+                reply = get_anwser(message, role_wa, number_user, usuario, origin, idwa)
                 anwsers.append(reply['anwser'])
                 agent_notify = reply['notify']
+                send_anwser = reply['send_anwser']
 
                 # Verificar si tiene mensajes hoy
                 cantidad = db.query(Message).filter(Message.user_number == number_user,
@@ -231,28 +263,22 @@ def reply_message(message, message_type, number_user, usuario, user_completed, i
                 if cantidad == 0 and not user_completed:
                     anwsers.append(
                         f'Mi nombre es {alias_ai} y estaré aquí para cualquier información que necesites. Me gustaría saber como te llamas.')
-
-                # Ejecutamos la consulta para insertar un nuevo registro de mesaje
                 anwsers_str = ' '.join(anwsers)
             else:
                 origin = 'agent'
                 anwsers_str = ''
 
-            new_message = Message(user_number=number_user, msg_sent=message,
-                                  msg_received=anwsers_str.strip(), msg_code=idwa, msg_type=message_type,
-                                  msg_origin=origin, msg_date=datetime.now())
-            db.add(new_message)
-            db.commit()
-
+            save_message(number_user, message, anwsers_str.strip(), idwa, message_type, origin, datetime.now())
     else:
         usuario = agent.agent_name
         # Ejecutamos la consulta para obtener la cantidad de registros
         cantidad = db.query(Query).filter(Query.query_code == idwa).count()
         if cantidad == 0:
             role_wa = 'agents'
-            reply = get_anwser(message, role_wa, number_user, usuario, idwa)
+            reply = get_anwser(message, role_wa, number_user, usuario, origin, idwa)
             anwsers.append(reply['anwser'])
             agent_notify = reply['notify']
+            send_anwser = reply['send_anwser']
 
             # Ejecutamos la consulta para insertar un nuevo registro de mesaje
             anwsers_str = ' '.join(anwsers)
@@ -266,10 +292,10 @@ def reply_message(message, message_type, number_user, usuario, user_completed, i
     db.close()
 
     # Retornar status
-    return {'anwsers': anwsers, 'notify': agent_notify}
+    return {'anwsers': anwsers, 'respond': send_anwser, 'notify': agent_notify}
 
 
-def get_anwser(query_message, query_role, query_number, query_usuario, query_idwa):
+def get_anwser(query_message, query_role, query_number, query_usuario, query_origin, query_idwa):
     agent_notify = False
     if query_message.strip() != '':
         if query_role == 'user':
@@ -286,58 +312,20 @@ def get_anwser(query_message, query_role, query_number, query_usuario, query_idw
         if index_context != 'None' and query_role != 'agents':
             if index_context != '0' and index_context != '1':
                 key_topic = topic_list[index_context]
-                query_index = get_query_index(key_topic)
                 if key_topic == 'items':
-                    prompt = f'Extrae el código del {alias_item} del siguiente texto: {query_message}'
-                    prompt += f'\\\nResponde "None" si no encuentra el código\\\n'
-                    code = get_completion(prompt)
-                    if code != 'None':
-                        product_code = re.findall(r'"([^"]*)"', code)
-                        if len(product_code) > 0:
-                            product_code = product_code[0]
-                            prompt = f'Extrae la cantidad del {alias_item} del siguiente texto: {query_message}'
-                            prompt += f'\\\nResponde "1" si no encuentra la cantidad\\\n'
-                            amount = get_completion(prompt)
-                            product_amount = 1
-                            amount = re.findall(r'"([^"]*)"', amount)
-                            if len(amount) > 0:
-                                amount = amount[0]
-                                if amount.isdigit():
-                                    product_amount = int(amount)
-
-                            topic_order = f'"<1> {alias_item}s ya solicitados o pedidos", "<2> Comprar o adquirir {alias_item}", "<3> Actualizar o modificar {alias_item}", "<4> Eliminar o cancelar {alias_item}"'
-                            sentence = get_index(query_message, topic_order, '0')
-                            if sentence != '0':
-                                order_number = get_order(query_number)
-                                behavior = f'Basándote la información de los {alias_item}s que aparece en el siguiente contexto.\\\n{{context_str}}\\\n'
-                                if sentence == '1' and order_number != '0':
-                                    anwser = get_product(order_number)
-                                else:
-                                    if sentence == '2':
-                                        values = get_product_csv(product_code)
-                                        values.append(product_amount)
-                                        if len(values) == 8:
-                                            if order_number == '0':
-                                                save_order(query_number)
-                                                order_number = get_order(query_number)
-                                            values.append(order_number)
-                                            anwser = save_product(values)
-                                        else:
-                                            anwser = f'Lo sentimos, este {alias_item} requiere de la supervisión de un {alias_expert} para su adquisición. Recomendamos ponerse en contacto con un {alias_expert}.'
-                                    else:
-                                        if sentence == '3' and order_number != '0':
-                                            anwser = update_product(order_number, product_code, product_amount)
-                                        else:
-                                            if sentence == '4' and order_number != '0':
-                                                anwser = delete_product(order_number, product_code)
-                                    if anwser != '':
-                                        prods = get_product(order_number)
-                                        anwser += f'\n{prods}'
+                    if query_origin == 'whatsapp':
+                        payload = json_catalog()
+                        send_json(query_number, payload, query_idwa)
+                        anwser = f'Con gusto aquí le mostramos nuestro catálogo'
+                    else:
+                        anwser = f'Si desea adquirir un {alias_item}, le recomendamos escribir al WhatsApp para enviarle nuestro catálogo'
+                    return {'anwser': anwser, 'send_anwser': True, 'notify': agent_notify}
 
                 if anwser == '':
                     behavior += f'Basándote en la siguiente información de contexto.\\\n{{context_str}}\\\n'
                     behavior += f'Responde el siguiente texto: "{{query_str}}"\\\n'
                     qa_template = Prompt(behavior)
+                    query_index = get_query_index(key_topic)
                     anwser = query_index.as_query_engine(text_qa_template=qa_template).query(query_message).response
 
                 if anwser != '':
@@ -412,7 +400,7 @@ def get_anwser(query_message, query_role, query_number, query_usuario, query_idw
             anwser = re.findall(r'"([^"]*)"', anwser)
             anwser = anwser[0]
 
-    return {'anwser': anwser, 'notify': agent_notify}
+    return {'anwser': anwser, 'send_anwser': True, 'notify': agent_notify}
 
 
 def get_query_index(key_topic):
@@ -501,7 +489,7 @@ def get_order(number_user):
     # Ejecutamos la consulta para encontrar una orden
     db: Session = get_db_conn()
 
-    order = db.query(Order).filter(Order.user_number == number_user, Order.status_code == 'CRE').first()
+    order = db.query(Order).filter(Order.user_number == number_user, Order.status_code == 'CRE').order_by(Order.order_start.desc()).first()
 
     # Cerramos la conexión y el cursor
     db.close()
@@ -512,11 +500,23 @@ def get_order(number_user):
         return '0'
 
 
+def save_message(msg_number, msg_sent, msg_received, msg_code, msg_type, msg_origin, msg_date):
+    # Ejecutamos la consulta para insertar un nueva orden
+    db: Session = get_db_conn()
+
+    # Ejecutamos la consulta para insertar un nuevo registro de mesaje
+    new_message = Message(user_number=msg_number, msg_sent=msg_sent,
+                          msg_received=msg_received, msg_code=msg_code, msg_type=msg_type,
+                          msg_origin=msg_origin, msg_date=msg_date)
+    db.add(new_message)
+    db.commit()
+
+
 def save_order(number_user):
     # Ejecutamos la consulta para insertar un nueva orden
     db: Session = get_db_conn()
 
-    new_order = Query(user_number=number_user, status_code='CRE', order_start=datetime.now())
+    new_order = Order(user_number=number_user, status_code='CRE', order_start=datetime.now())
     db.add(new_order)
     db.commit()
 
@@ -529,19 +529,21 @@ def save_product(product):
     db: Session = get_db_conn()
 
     product_code = product[0]
-    order_number = product[8]
-    product_amount = product[7]
+    order_number = product[9]
+    product_amount = product[8]
     cantidad = count_product(order_number, product_code)
     if cantidad == 0:
         product_name = product[1]
         product_description = product[2]
-        product_offer = product[3]
-        product_price = product[4]
-        product_payment = product[5]
-        product_measure = product[6]
+        product_price = product[3]
+        product_payment = product[4]
+        product_currency = product[5]
+        product_offer = product[6]
+        product_measure = product[7]
         new_product = Product(product_code=product_code, product_name=product_name,
-                              product_description=product_description,
-                              product_offer=product_offer, product_price=product_price, product_payment=product_payment,
+                              product_description=product_description, product_offer=product_offer,
+                              product_price=product_price, product_payment=product_payment,
+                              product_currency=product_currency,
                               product_measure=product_measure, product_amount=product_amount, order_number=order_number)
         db.add(new_product)
 
@@ -550,12 +552,6 @@ def save_product(product):
 
     # Cerramos la conexión y el cursor
     db.close()
-
-    if cantidad == 0:
-        return f'Se agregó el {alias_item} "{product[1]}" a tu {alias_order}.'
-    else:
-        product_amount += cantidad
-        return update_product(order_number, product_code, product_amount)
 
 
 def update_product(order_number, product_code, product_amount):
@@ -599,6 +595,25 @@ def get_product(order_number):
         return f'No tenemos registros de {alias_item}s que hayas solicitado.'
 
 
+def get_product_excel(product_code):
+    dir_excel = os.path.join(os.getcwd(), 'backend/prompt/items/')
+    files = os.listdir(dir_excel)
+
+    for file in files:
+        # Ruta completa del archivo
+        file_path = os.path.join(dir_excel, file)
+        # Verificar si es un archivo
+        if os.path.isfile(file_path):
+            file_ext = os.path.splitext(file_path)[1]
+            if file_ext.lower() in ['.xls', '.xlsx']:
+                excel_data = pd.read_excel(file_path, skiprows=1)  # Saltar la primera fila
+                for index, row in excel_data.iterrows():
+                    if str(row['id']) == str(product_code):
+                        valor = [str(row['id']), row['title'], row['description']]
+                        return valor
+    return []
+
+
 def get_product_csv(product_code):
     dir_csv = os.path.join(os.getcwd(), f'backend/prompt/items/')
     files = os.listdir(dir_csv)
@@ -612,9 +627,8 @@ def get_product_csv(product_code):
                 with open(file_csv, 'r', newline='', encoding='utf-8') as products:
                     reader = csv.DictReader(products)
                     for row in reader:
-                        if row['Codigo'] == product_code:
-                            valor = [row['Codigo'], row['Nombre'], row['Descripcion'], row['Oferta'], row['Unidad'],
-                                     float(row['Precio']), float(row['Pagar'])]
+                        if row['id'] == product_code:
+                            valor = [row['id'], row['title'], row['description'], row['price']]
                             return valor
     return []
 
@@ -700,7 +714,8 @@ def create_user(user_number, user_whatsapp, user_name):
         # Verificar si ya existia un usuario diferente con ese whatsapp
         user_ws = None
         if user_whatsapp != '':
-            user_ws = db.query(User).filter(User.user_number != user_number, User.user_whatsapp == user_whatsapp).first()
+            user_ws = db.query(User).filter(User.user_number != user_number,
+                                            User.user_whatsapp == user_whatsapp).first()
             if user_ws:
                 user_number = user_ws.user_number
                 if user_ws.user_name == '':
@@ -763,7 +778,8 @@ def notify(notify_number, notify_whatsapp, notify_usuario, notify_idwa):
             f'Hola {agent_name}, el {alias_user} {notify_usuario} ha solicitado hablar con un {alias_expert}.']
 
         # Se le envía al agente las preguntas que el usuario realizó en el día de actual
-        messages = db.query(Message).filter(Message.user_number == notify_number).order_by(Message.id.desc()).limit(msg_count).all()
+        messages = db.query(Message).filter(Message.user_number == notify_number).order_by(Message.id.desc()).limit(
+            msg_count).all()
         questions = [message.msg_sent for message in messages]
         if questions:
             if len(questions) > 1:
@@ -817,6 +833,166 @@ def send_voice(anwsers, numberwa, filename, idwa):
     # mensajewa.mark_as_read(idwa)
 
 
+def send_json(numberwa, jsonwa, idwa):
+    mensajewa = WhatsApp(whasapp_token, whasapp_id)
+    mensajewa.send_custom_json(recipient_id=numberwa, data=jsonwa)
+    # mensajewa.mark_as_read(idwa)
+
+
+def json_button():
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {
+                "text": "BUTTON_TEXT"
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "UNIQUE_BUTTON_ID_1",
+                            "title": "BUTTON_TITLE_1"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "UNIQUE_BUTTON_ID_2",
+                            "title": "BUTTON_TITLE_2"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    return payload
+
+
+def json_product():
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "type": "interactive",
+        "interactive": {
+            "type": "product",
+            "body": {
+                "text": "optional body text"
+            },
+            "action": {
+                "catalog_id": "693805289237308",
+                "product_retailer_id": "2345678901"
+            }
+        }
+    }
+    return payload
+
+
+def json_catalog():
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "type": "interactive",
+        "interactive": {
+            "type": "product_list",
+            "header": {
+                "type": "text",
+                "text": "🛒 Carrito de compras"
+            },
+            "body": {
+                "text": "Lista de productos"
+            },
+            "action": {
+                "catalog_id": "693805289237308",
+                "sections": [
+                    {
+                        "title": "Audio y Video",
+                        "product_items": [
+                            {"product_retailer_id": "4567890123"},
+                            {"product_retailer_id": "5678901234"},
+                            {"product_retailer_id": "6789012345"},
+                        ]
+                    },
+                    {
+                        "title": "Computación",
+                        "product_items": [
+                            {"product_retailer_id": "3456789012"},
+                            {"product_retailer_id": "7890123456"},
+                            {"product_retailer_id": "8901234567"},
+                            {"product_retailer_id": "9012345678"},
+                        ]
+                    },
+                    {
+                        "title": "Teléfonos y Tablets",
+                        "product_items": [
+                            {"product_retailer_id": "1234567890"},
+                            {"product_retailer_id": "2345678901"},
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+    return payload
+
+
+def json_list():
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "type": "interactive",
+        "interactive": {
+            "type": "list",
+            "header": {
+                "type": "text",
+                "text": "🛒 Carrito de compras"
+            },
+            "body": {
+                "text": "Lista de los productos solicitados"
+            },
+            "action": {
+                "button": "Lista de productos",
+                "sections": [
+                    {
+                        "title": "SECTION_1_TITLE",
+                        "rows": [
+                            {
+                                "id": "SECTION_1_ROW_1_ID",
+                                "title": "SECTION_1_ROW_1_TITLE",
+                                "description": "SECTION_1_ROW_1_DESCRIPTION"
+                            },
+                            {
+                                "id": "SECTION_1_ROW_2_ID",
+                                "title": "SECTION_1_ROW_2_TITLE",
+                                "description": "SECTION_1_ROW_2_DESCRIPTION"
+                            }
+                        ]
+                    },
+                    {
+                        "title": "SECTION_2_TITLE",
+                        "rows": [
+                            {
+                                "id": "SECTION_2_ROW_1_ID",
+                                "title": "SECTION_2_ROW_1_TITLE",
+                                "description": "SECTION_2_ROW_1_DESCRIPTION"
+                            },
+                            {
+                                "id": "SECTION_2_ROW_2_ID",
+                                "title": "SECTION_2_ROW_2_TITLE",
+                                "description": "SECTION_2_ROW_2_DESCRIPTION"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+    return payload
+
+
 def transcribe_audio(audio):
     if transcribe_api == 'openai':
         # Traductor de voz a texto openai whisper
@@ -851,17 +1027,6 @@ def get_language(query, anwers):
     if language != 'None':
         language = get_completion(f'Responde cuál es el idioma del siguiente texto "{query}". ejemplo: "Español"')
     return language
-
-
-def empty_dir(dir_to_empty):
-    files = os.listdir(dir_to_empty)
-    for file in files:
-        # Ruta completa del archivo
-        file_url = os.path.join(dir_to_empty, file)
-        # Verificar si es un archivo
-        if os.path.isfile(file_url):
-            # Eliminar el archivo
-            os.remove(file_url)
 
 
 def watting_agent(user_number):

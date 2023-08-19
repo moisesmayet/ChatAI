@@ -1,7 +1,14 @@
+import random
+import string
 from sqlalchemy import Column, String, Integer, Boolean, Numeric, Text, ForeignKey, DateTime
 from datetime import datetime
 from backend.config.db import db_conn
 from passlib.hash import bcrypt
+
+
+def generate_random_key(length=10):
+    characters = string.ascii_letters + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
 
 
 class Agent(db_conn):
@@ -61,7 +68,7 @@ class Message(db_conn):
 class Order(db_conn):
     __tablename__ = "orders"
 
-    order_number = Column(String(10), primary_key=True, autoincrement=True)
+    order_number = Column(String(10), primary_key=True, default=generate_random_key)
     status_code = Column(String(3), ForeignKey("status.status_code"))
     user_number = Column(String(254), ForeignKey("users.user_number"))
     order_end = Column(DateTime)
@@ -79,14 +86,15 @@ class Product(db_conn):
     __tablename__ = "products"
 
     product_code = Column(String(10), primary_key=True)
-    product_payment = Column(Numeric(10, 2))
-    product_amount = Column(Numeric)
-    order_number = Column(String, ForeignKey("orders.order_number"))
-    product_price = Column(Numeric(10, 2))
-    product_description = Column(String(1000))
-    product_measure = Column(String(20))
+    order_number = Column(String(10), ForeignKey("orders.order_number"), primary_key=True)
     product_name = Column(String(20))
+    product_description = Column(String(1000))
     product_offer = Column(String(50))
+    product_price = Column(Numeric(10, 2))
+    product_payment = Column(Numeric(10, 2))
+    product_currency = Column(String(20))
+    product_amount = Column(Numeric)
+    product_measure = Column(String(20))
 
 
 class Query(db_conn):

@@ -20,7 +20,7 @@ def parameters_list(request: Request):
     db: Session = get_db_conn()
     parameters = db.query(Parameter).order_by(Parameter.parameter_name.asc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/parameters/parameters.html', {'request': request, 'parameters': parameters, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang'))})
+    return templates.TemplateResponse('dashboard/parameters/parameters.html', {'request': request, 'parameters': parameters, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
 
 @parameter_app.get('/parameters/view/{parameter_name}', response_class=HTMLResponse)
@@ -42,7 +42,7 @@ def parameters_view(request: Request, parameter_name: str):
         else:
             combo_values = get_combo(language, parameter_name, parameter.parameter_value)
 
-        return templates.TemplateResponse('dashboard/parameters/parameters_view.html', {'request': request, 'parameters': parameters, 'parameter': parameter, 'lang_alias': lang_alias, 'combo_values': combo_values, 'permission': permission, 'language': language})
+        return templates.TemplateResponse('dashboard/parameters/parameters_view.html', {'request': request, 'parameters': parameters, 'parameter': parameter, 'lang_alias': lang_alias, 'combo_values': combo_values, 'permission': permission, 'language': language, 'menu': eval(request.cookies.get('Menu'))})
 
 
 @parameter_app.get('/parameters/new', response_class=HTMLResponse)
@@ -52,7 +52,7 @@ async def parameters_new(request: Request):
         db: Session = get_db_conn()
         parameters = db.query(Parameter).order_by(Parameter.parameter_name.asc()).all()
         db.close()
-        return templates.TemplateResponse('dashboard/parameters/parameters_new.html', {'request': request, 'parameters': parameters, 'permission': permission, 'language': eval(request.cookies.get('UserLang'))})
+        return templates.TemplateResponse('dashboard/parameters/parameters_new.html', {'request': request, 'parameters': parameters, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -94,7 +94,7 @@ async def parameters_edit(request: Request, parameter_name: str):
         else:
             combo_values = get_combo(language, parameter_name, parameter.parameter_value)
 
-        return templates.TemplateResponse('dashboard/parameters/parameters_edit.html', {'request': request, 'parameters': parameters, 'parameter': parameter, 'lang_alias': lang_alias, 'combo_values': combo_values, 'permission': permission, 'language': language})
+        return templates.TemplateResponse('dashboard/parameters/parameters_edit.html', {'request': request, 'parameters': parameters, 'parameter': parameter, 'lang_alias': lang_alias, 'combo_values': combo_values, 'permission': permission, 'language': language, 'menu': eval(request.cookies.get('Menu'))})
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin'))
 
@@ -144,7 +144,7 @@ def get_combo(language, parameter_name, parameter_value):
     if parameter_name == 'lang_code':
         combo_values = get_language_names(parameter_value)
     else:
-        if parameter_name == 'messages_translator' or parameter_name == 'messages_voice':
+        if parameter_name == 'messages_translator' or parameter_name == 'messages_voice' or parameter_name.startswith('menu_'):
             if parameter_value == 'si':
                 combo_values.append({'value': 'si', 'name': language['yes'], 'selected': True})
                 combo_values.append({'value': 'no', 'name': language['no'], 'selected': False})

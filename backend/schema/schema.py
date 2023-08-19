@@ -138,14 +138,15 @@ class Parameter(ParameterBase):
 
 class ProductBase(BaseModel):
     product_code: str
-    product_payment: float
-    product_amount: float
     order_number: str
-    product_price: float
-    product_description: str
-    product_measure: str
     product_name: str
+    product_description: str
     product_offer: str
+    product_price: float
+    product_payment: float
+    product_currency: str
+    product_amount: float
+    product_measure: str
 
 
 class ProductDelete(BaseModel):
