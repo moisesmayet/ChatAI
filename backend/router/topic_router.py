@@ -113,7 +113,10 @@ async def topics_edit(request: Request, topic_name: str):
             topic_rebuild = True
 
         db: Session = get_db_conn()
-        topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_order=form['topic_order'], topic_rebuild=topic_rebuild, topic_system=topic_system)
+        if 'topic_order' in form:
+            topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_order=form['topic_order'], topic_rebuild=topic_rebuild, topic_system=topic_system)
+        else:
+            topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_rebuild=topic_rebuild, topic_system=topic_system)
         db.merge(topic)
         db.commit()
         db.close()

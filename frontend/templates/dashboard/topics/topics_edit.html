@@ -39,7 +39,7 @@
                       value="{{ topic.topic_order }}"
                       oninput="this.value = this.value.replace(/\D/g, '')"
                       required
-                      {% if topic.topic_system %}
+                      {% if topic.topic_order == 0 or topic.topic_order == 1 %}
                         disabled
                       {% endif %}
                     >

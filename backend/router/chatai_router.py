@@ -84,109 +84,132 @@ async def webhook_whatsapp(request: Request):
         message = ''
         message_data = data['entry'][0]['changes'][0]['value'].get('messages')
         if message_data:
-            # Identificador único de mensaje
-            idwa = message_data[0]['id']
-            # Número de teléfono del usuario
-            user_whatsapp = message_data[0]['from']
+            try:
+                # Identificador único de mensaje
+                idwa = message_data[0]['id']
+                # Número de teléfono del usuario
+                user_whatsapp = message_data[0]['from']
 
-            # Se verifica si el mensaje es de tipo texto o media
-            message_type = message_data[0]['type']
-            if message_type == 'text':
-                # Obtener el texto del mensaje
-                message = message_data[0]['text']['body'].strip()
-            else:
-                if messages_voice and message_type == 'audio':
-                    # Directorio local de medias
-                    filename = re.sub(r'\W', '', idwa)
-                    local_media = os.path.join(os.getcwd(), f'{media_url}/{user_whatsapp}/')
-                    audio_awnser = f'{local_media}anwser_{filename}.ogg'
-                    if not os.path.exists(audio_awnser):
-                        # Elimino el directorio
-                        if os.path.exists(local_media):
-                            # Eliminar el directorio y su contenido
-                            shutil.rmtree(local_media)
-                        else:
-                            os.makedirs(local_media)
+                # Verificar si es un agente
+                db: Session = get_db_conn()
 
-                        # Obtener la url media de whatsapp
-                        audio_url = message_data[0]['audio']['id']
-                        audio_url = f'{whasapp_url}{audio_url}/'
-                        response = requests.get(audio_url, headers={'Authorization': f'Bearer {whasapp_token}'})
-                        audio_data = json.loads(response.content.decode('utf-8'))
-                        audio_url = audio_data['url']
+                agent = db.query(Agent).filter(Agent.agent_number == user_whatsapp).first()
 
-                        # Descargar media de whatsapp
-                        audio_ogg = f'{local_media}{filename}.ogg'
-                        audio_text = f'{local_media}{filename}.{transcribe_format}'
-                        response = requests.get(audio_url, headers={'Authorization': f'Bearer {whasapp_token}'})
-                        with open(audio_ogg, 'wb') as file:
-                            file.write(response.content)
+                # Cerramos la conexión y el cursor
+                db.close()
 
-                        ogg_file = os.path.join(media_url, audio_ogg)
-                        pydub.AudioSegment.from_ogg(ogg_file).export(audio_text, format=transcribe_format)
-                        audio_filename = os.path.join(media_url, audio_text)
-
-                        # Realiza la transcripción del audio
-                        message = transcribe_audio(audio_filename)
-
-                        # Elimina los archivos de audio descargados
-                        shutil.rmtree(local_media)
-
-                        # Notificar que se va a escuchar el audio
-                        send_text([f'Voy a escuchar el audio que me enviaste y en breve te respondo.'], user_whatsapp,
-                                  idwa)
+                # Se verifica si el mensaje es de tipo texto o media
+                message_type = message_data[0]['type']
+                if message_type == 'text':
+                    # Obtener el texto del mensaje
+                    message = message_data[0]['text']['body'].strip()
                 else:
-                    if message_type == 'order':
-                        # Obtener el texto del mensaje
-                        products = message_data[0]['order']['product_items']
-                        save_order(user_whatsapp)
-                        order_number = get_order(user_whatsapp)
-                        for product in products:
-                            price = product['item_price']
-                            values = get_product_excel(product['product_retailer_id'])
-                            values.append(price)
-                            values.append(price)
-                            values.append(product['currency'])
-                            values.append('')
-                            values.append('Unidad')
-                            values.append(product['quantity'])
-                            values.append(order_number)
-                            save_product(values)
+                    if messages_voice and message_type == 'audio':
+                        # Directorio local de medias
+                        filename = re.sub(r'\W', '', idwa)
+                        local_media = os.path.join(os.getcwd(), f'{media_url}/{user_whatsapp}/')
+                        audio_awnser = f'{local_media}anwser_{filename}.ogg'
+                        if not os.path.exists(audio_awnser):
+                            # Elimino el directorio
+                            if os.path.exists(local_media):
+                                # Eliminar el directorio y su contenido
+                                shutil.rmtree(local_media)
+                            else:
+                                os.makedirs(local_media)
 
-                        anwsers = f'Su orden de compra ({order_number}) fue enviada satisfactoriamente'
-                        send_text([anwsers], user_whatsapp, idwa)
-                        save_message(user_whatsapp, 'producto(s)', anwsers, idwa, message_type, 'whatsapp', datetime.now())
-                        return JSONResponse({'status': 'success'}, status_code=200)
+                            # Obtener la url media de whatsapp
+                            audio_url = message_data[0]['audio']['id']
+                            audio_url = f'{whasapp_url}{audio_url}/'
+                            response = requests.get(audio_url, headers={'Authorization': f'Bearer {whasapp_token}'})
+                            audio_data = json.loads(response.content.decode('utf-8'))
+                            audio_url = audio_data['url']
+
+                            # Descargar media de whatsapp
+                            audio_ogg = f'{local_media}{filename}.ogg'
+                            audio_text = f'{local_media}{filename}.{transcribe_format}'
+                            response = requests.get(audio_url, headers={'Authorization': f'Bearer {whasapp_token}'})
+                            with open(audio_ogg, 'wb') as file:
+                                file.write(response.content)
+
+                            ogg_file = os.path.join(media_url, audio_ogg)
+                            pydub.AudioSegment.from_ogg(ogg_file).export(audio_text, format=transcribe_format)
+                            audio_filename = os.path.join(media_url, audio_text)
+
+                            # Realiza la transcripción del audio
+                            message = transcribe_audio(audio_filename)
+                            # Elimina los archivos de audio descargados
+                            empty_dir(local_media)
+
+                            if message != '':
+                                # Notificar que se va a escuchar el audio
+                                msg_audio = f'Voy a escuchar el audio que me enviaste y en breve te respondo.'
+                                send_text([msg_audio], user_whatsapp, idwa)
+                            else:
+                                msg_audio = f'No se escucha bien la nota de voz.'
+
+                                send_text([msg_audio], user_whatsapp, idwa)
+                                save_message(user_whatsapp, '', msg_audio, idwa, message_type, 'whatsapp',
+                                             datetime.now(), agent)
+                                return JSONResponse({'status': 'success'}, status_code=200)
                     else:
-                        if message_type != 'reaction':
-                            anwsers = f'Solo puedo ayudarte si me escribes textos'
+                        if message_type == 'order':
+                            # Obtener el texto del mensaje
+                            products = message_data[0]['order']['product_items']
+                            save_order(user_whatsapp)
+                            order_number = get_order(user_whatsapp)
+                            for product in products:
+                                price = product['item_price']
+                                values = get_product_excel(product['product_retailer_id'])
+                                values.append(price)
+                                values.append(price)
+                                values.append(product['currency'])
+                                values.append('')
+                                values.append('Unidad')
+                                values.append(product['quantity'])
+                                values.append(order_number)
+                                save_product(values)
+
+                            anwsers = f'Su orden de compra ({order_number}) fue enviada satisfactoriamente'
                             send_text([anwsers], user_whatsapp, idwa)
-                            save_message(user_whatsapp, 'reacción', 'reacción', idwa, message_type, 'whatsapp', datetime.now())
+                            save_message(user_whatsapp, '', anwsers, idwa, message_type, 'whatsapp',
+                                         datetime.now(), agent)
                             return JSONResponse({'status': 'success'}, status_code=200)
+                        else:
+                            if message_type != 'reaction':
+                                anwsers = f'Solo puedo ayudarte si me escribes textos'
+                                send_text([anwsers], user_whatsapp, idwa)
+                                save_message(user_whatsapp, '', anwsers, idwa, message_type, 'whatsapp', datetime.now(), agent)
+                                return JSONResponse({'status': 'success'}, status_code=200)
 
-            # Revisar que haya mensaje
-            if len(message) > 0:
-                user_response = create_user(user_whatsapp, user_whatsapp, alias_user)
+                # Revisar que haya mensaje
+                if len(message) > 0:
+                    user_response = create_user(user_whatsapp, user_whatsapp, alias_user)
 
-                reply = reply_message(message, message_type, user_response['number'],
-                                      user_response['usuario'], user_response['user_completed'], 'whatsapp', idwa)
-                anwsers = reply['anwsers']
+                    reply = reply_message(message, message_type, user_response['number'],
+                                          user_response['usuario'], agent, user_response['user_completed'], 'whatsapp',
+                                          idwa)
+                    anwsers = reply['anwsers']
 
-                # Mensajes al usuario
-                if reply['respond']:
-                    if message_type == 'text':
-                        send_text(anwsers, user_whatsapp, idwa)
-                    else:
-                        anwsers_str = ' '.join(anwsers)
-                        send_voice(anwsers_str, user_whatsapp, filename, idwa)
-                        if os.path.exists(audio_awnser):
-                            os.remove(audio_awnser)
+                    # Mensajes al usuario
+                    if reply['respond']:
+                        if message_type == 'text':
+                            send_text(anwsers, user_whatsapp, idwa)
+                        else:
+                            anwsers_str = ' '.join(anwsers)
+                            send_voice(anwsers_str, user_whatsapp, filename, idwa)
+                            if os.path.exists(audio_awnser):
+                                os.remove(audio_awnser)
 
-                    if reply['notify']:
-                        notify(user_response['number'], user_response['whatsapp'], user_response['usuario'], idwa)
+                        if reply['notify']:
+                            notify(user_response['number'], user_response['whatsapp'], user_response['usuario'], idwa)
 
-                # Retornar la respuesto en un JSON
-                return JSONResponse({'status': 'success'}, status_code=200)
+                    # Retornar la respuesto en un JSON
+                    return JSONResponse({'status': 'success'}, status_code=200)
+            except Exception as e:
+                # En caso de error, retornar una respuesta JSON con el mensaje de error
+                save_message(user_whatsapp, '', '', idwa, message_type, 'whatsapp',
+                             datetime.now(), agent)
+                return JSONResponse({'status': 'no_messages'}, status_code=200)
 
     # No hay mensajes disponibles
     return JSONResponse({'status': 'no_messages'}, status_code=200)
@@ -210,6 +233,7 @@ async def webhook_web(userid: UserId, username: UserName, userwhatsapp: UserWhat
             user_response = create_user(userid.web_userid, userwhatsapp.web_userwhatsapp, username.web_username)
 
             reply = reply_message(question.web_question, 'text', user_response['number'], user_response['usuario'],
+                                  None,
                                   user_response['user_completed'], 'web', idwa)
             anwser = ' '.join(reply['anwsers'])
 
@@ -233,7 +257,7 @@ async def serve_media(filename: str):
     return FileResponse(file_path)
 
 
-def reply_message(message, message_type, number_user, usuario, user_completed, origin, idwa):
+def reply_message(message, message_type, number_user, usuario, agent, user_completed, origin, idwa):
     anwsers = []
     agent_notify = False
     send_anwser = True
@@ -241,8 +265,6 @@ def reply_message(message, message_type, number_user, usuario, user_completed, o
     # Conectamos a la base de datos
     db: Session = get_db_conn()
 
-    # Verificar si es un agente
-    agent = db.query(Agent).filter(Agent.agent_number == number_user).first()
     if agent is None:
         # Ejecutamos la consulta para obtener la cantidad de registros
         cantidad = db.query(Message).filter(Message.msg_code == idwa).count()
@@ -268,7 +290,7 @@ def reply_message(message, message_type, number_user, usuario, user_completed, o
                 origin = 'agent'
                 anwsers_str = ''
 
-            save_message(number_user, message, anwsers_str.strip(), idwa, message_type, origin, datetime.now())
+            save_message(number_user, message, anwsers_str.strip(), idwa, message_type, origin, datetime.now(), agent)
     else:
         usuario = agent.agent_name
         # Ejecutamos la consulta para obtener la cantidad de registros
@@ -280,13 +302,8 @@ def reply_message(message, message_type, number_user, usuario, user_completed, o
             agent_notify = reply['notify']
             send_anwser = reply['send_anwser']
 
-            # Ejecutamos la consulta para insertar un nuevo registro de mesaje
             anwsers_str = ' '.join(anwsers)
-            new_query = Query(agent_number=number_user, query_sent=message,
-                              query_received=anwsers_str.strip(), query_code=idwa, query_type=message_type,
-                              query_origin=origin, query_date=datetime.now())
-            db.add(new_query)
-            db.commit()
+            save_message(number_user, message, anwsers_str.strip(), idwa, message_type, origin, datetime.now(), agent)
 
     # Cerramos la conexión y el cursor
     db.close()
@@ -489,7 +506,8 @@ def get_order(number_user):
     # Ejecutamos la consulta para encontrar una orden
     db: Session = get_db_conn()
 
-    order = db.query(Order).filter(Order.user_number == number_user, Order.status_code == 'CRE').order_by(Order.order_start.desc()).first()
+    order = db.query(Order).filter(Order.user_number == number_user, Order.status_code == 'CRE').order_by(
+        Order.order_start.desc()).first()
 
     # Cerramos la conexión y el cursor
     db.close()
@@ -500,14 +518,20 @@ def get_order(number_user):
         return '0'
 
 
-def save_message(msg_number, msg_sent, msg_received, msg_code, msg_type, msg_origin, msg_date):
+def save_message(msg_number, msg_sent, msg_received, msg_code, msg_type, msg_origin, msg_date, msg_agent):
     # Ejecutamos la consulta para insertar un nueva orden
     db: Session = get_db_conn()
 
     # Ejecutamos la consulta para insertar un nuevo registro de mesaje
-    new_message = Message(user_number=msg_number, msg_sent=msg_sent,
-                          msg_received=msg_received, msg_code=msg_code, msg_type=msg_type,
-                          msg_origin=msg_origin, msg_date=msg_date)
+    if msg_agent is None:
+        new_message = Message(user_number=msg_number, msg_sent=msg_sent,
+                              msg_received=msg_received, msg_code=msg_code, msg_type=msg_type,
+                              msg_origin=msg_origin, msg_date=msg_date)
+    else:
+        new_message = Query(agent_number=msg_number, query_sent=msg_sent, query_received=msg_received,
+                            query_code=msg_code,
+                            query_type=msg_type, query_origin=msg_origin, query_date=msg_date)
+
     db.add(new_message)
     db.commit()
 
@@ -821,6 +845,10 @@ def send_voice(anwsers, numberwa, filename, idwa):
     mensajewa = WhatsApp(whasapp_token, whasapp_id)
     filename = f'anwser_{filename}.mp3'
     audio_anwser = os.path.join(os.getcwd(), f'{media_url}/{numberwa}/{filename}')
+    local_media = os.path.join(os.getcwd(), f'{media_url}/{numberwa}')
+    if not os.path.exists(local_media):
+        os.makedirs(local_media)
+
     audio = generate(
         text=anwsers,
         voice='Rachel',
@@ -1054,3 +1082,14 @@ def watting_agent(user_number):
     db.close()
 
     return False
+
+
+def empty_dir(dir_to_empty):
+    files = os.listdir(dir_to_empty)
+    for file in files:
+        # Ruta completa del archivo
+        file_url = os.path.join(dir_to_empty, file)
+        # Verificar si es un archivo
+        if os.path.isfile(file_url):
+            # Eliminar el archivo
+            os.remove(file_url)
