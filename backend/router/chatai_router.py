@@ -112,8 +112,8 @@ async def webhook_whatsapp(request: Request):
                         if not os.path.exists(audio_awnser):
                             # Elimino el directorio
                             if os.path.exists(local_media):
-                                # Eliminar el directorio y su contenido
-                                shutil.rmtree(local_media)
+                                # Eliminar el contenido del directorio
+                                empty_dir(local_media)
                             else:
                                 os.makedirs(local_media)
 
