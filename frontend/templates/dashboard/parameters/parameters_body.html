@@ -18,7 +18,7 @@
             {% if permission == 'super' %}
               <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
               <th class="text-center">
-                <a href="{{ url_for('parameters_new') }}" class="nav-link text-body font-weight-bold px-0">
+                <a href="{{ url_for('parameters_new', business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                   <i class="fa fa-plus-circle me-sm-1"></i>
                 </a>
               </th>
@@ -55,7 +55,7 @@
 
               {% if permission == 'super' %}
                 <td class="align-middle text-center text-sm custom-cell-width">
-                  <a href="{{ url_for('parameters_view', parameter_name=item.parameter_name) }}" class="nav-link text-body font-weight-bold px-0">
+                  <a href="{{ url_for('parameters_view', parameter_name=item.parameter_name, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                     <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/General/Visible.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                         <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                             <path d="M3,12 C3,12 5.45454545,6 12,6 C16.9090909,6 21,12 21,12 C21,12 16.9090909,18 12,18 C5.45454545,18 3,12 3,12 Z" fill="#000000" fill-rule="nonzero" opacity="0.3"/>
@@ -66,7 +66,7 @@
                 </td>
 
                 <td class="align-middle text-center text-sm custom-cell-width">
-                  <a href="{{ url_for('parameters_edit', parameter_name=item.parameter_name) }}" class="nav-link text-body font-weight-bold px-0">
+                  <a href="{{ url_for('parameters_edit', parameter_name=item.parameter_name, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                     <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Design/Edit.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                         <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                             <rect x="0" y="0" width="24" height="24"/>

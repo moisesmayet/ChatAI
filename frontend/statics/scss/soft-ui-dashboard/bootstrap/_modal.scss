@@ -159,7 +159,7 @@
   flex-shrink: 0;
   flex-wrap: wrap;
   align-items: center; // vertically center
-  justify-content: flex-end; // Right align buttons with flex property because text-align doesn't work on flex items
+  justify-content: flex-end; // Right align buttons with flex property because text-align doesn't work on flex 693805289237308
   padding: calc(var(--#{$prefix}modal-padding) - var(--#{$prefix}modal-footer-gap) * .5);
   background-color: var(--#{$prefix}modal-footer-bg);
   border-top: var(--#{$prefix}modal-footer-border-width) solid var(--#{$prefix}modal-footer-border-color);

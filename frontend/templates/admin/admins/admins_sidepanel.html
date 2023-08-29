@@ -1,0 +1,21 @@
+{% extends 'layouts/base_admin.html' %}
+
+{% block title %} {{ language.experts }} {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+    <div class="container-fluid py-4">
+      <div class="row my-4">
+        <div class="col-lg-8 col-md-6 mb-md-0 mb-4">
+            {% set col_wide = 50 %}
+            {% include "admin/admins/admins_body.html" %}
+        </div>
+
+        {% block sidepanel %}{% endblock sidepanel %}
+      </div>
+    </div>
+
+{% endblock content %}

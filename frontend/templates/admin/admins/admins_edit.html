@@ -1,0 +1,129 @@
+{% extends 'admin/admins/admins_sidepanel.html' %}
+
+{% block sidepanel %}
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card">
+            <div class="card-header pb-0">
+                <h6>{{ language.edit }}</h6>
+            </div>
+
+            <div>
+                <a href="{{ url_for('admins_list') }}" class="float-end pe-3">
+                  <i class="fa fa-times me-sm-1"></i>
+                </a>
+            </div>
+
+            <div class="card-body p-3">
+                <form method="POST" action="{{ url_for('admins_edit', admin_number=admin.admin_number) }}">
+                  <label>{{ language.expert }}</label>
+                  <div class="mb-3">
+                    <input
+                      id="admin_number"
+                      class="form-control"
+                      type="text"
+                      name="admin_number"
+                      value="{{ admin.admin_number }}"
+                      disabled
+                    >
+                  </div>
+
+                  <label>{{ language.name }}</label>
+                  <div class="mb-3">
+                    <input
+                      id="admin_name"
+                      class="form-control"
+                      type="text"
+                      name="admin_name"
+                      value="{{ admin.admin_name }}"
+                    >
+                  </div>
+
+                  <label>{{ language.password }}</label>
+                    <div class="mb-3">
+                      <input
+                        id="admin_password"
+                        class="form-control"
+                        name="admin_password"
+                        type="password"
+                        required
+                      >
+                  </div>
+
+                  <label>Whatsapp</label>
+                  <div class="mb-3">
+                    <input
+                      id="admin_whatsapp"
+                      class="form-control"
+                      type="text"
+                      name="admin_whatsapp"
+                      value="{{ admin.admin_whatsapp }}"
+                      required
+                    >
+                  </div>
+
+                  <label>{{ language.active }}</label>
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      id="admin_active"
+                      class="form-check-input"
+                      type="checkbox"
+                      name="admin_active"
+                      {% if admin.admin_active %}
+                        checked
+                      {% endif %}
+                      {% if admin_logeado %}
+                        disabled
+                      {% endif %}
+                    >
+                  </div>
+
+                  <label>Staff</label>
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      id="admin_staff"
+                      class="form-check-input"
+                      type="checkbox"
+                      name="admin_staff"
+                      {% if admin.admin_staff %}
+                        checked
+                      {% endif %}
+                      {% if admin_logeado %}
+                        disabled
+                      {% endif %}
+                    >
+                  </div>
+
+                  <label>Super</label>
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      id="admin_super"
+                      class="form-check-input"
+                      type="checkbox"
+                      name="admin_super"
+                      {% if admin.admin_super %}
+                        checked
+                      {% endif %}
+                      {% if admin_logeado %}
+                        disabled
+                      {% endif %}
+                    >
+                  </div>
+
+                  <div class="float-end">
+                    <button type="submit" name="admins_edit" class="btn bg-gradient-dark w-100 my-4 mb-2">{{ language.confirm }}</button>
+                  </div>
+                </form>
+            </div>
+
+            <div class="card-header pb-0 text-left bg-transparent">
+              <p class="mb-0">
+                {% if msg %}
+                  <span class="text-danger">{{ msg | safe }}</span>
+                {% endif %}
+              </p>
+            </div>
+        </div>
+    </div>
+
+{% endblock sidepanel %}

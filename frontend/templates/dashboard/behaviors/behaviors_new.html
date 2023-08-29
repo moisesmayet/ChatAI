@@ -9,13 +9,13 @@
             </div>
 
             <div>
-                <a href="{{ url_for('behaviors_list') }}" class="float-end pe-3">
+                <a href="{{ url_for('behaviors_list', business_code=business_code) }}" class="float-end pe-3">
                   <i class="fa fa-times me-sm-1"></i>
                 </a>
             </div>
 
             <div class="card-body p-3">
-                <form method="POST" action="{{ url_for('behaviors_new') }}">
+                <form method="POST" action="{{ url_for('behaviors_new', business_code=business_code) }}">
                   <label>{{ language.code }}</label>
                   <div class="mb-3">
                     <input

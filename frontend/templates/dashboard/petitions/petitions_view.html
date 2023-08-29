@@ -1,0 +1,113 @@
+{% extends 'dashboard/petitions/petitions_sidepanel.html' %}
+
+{% block sidepanel %}
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card">
+            <div class="card-header pb-0">
+                <h6>{{ language.view }}</h6>
+            </div>
+
+            <div>
+                <a href="{{ url_for('petitions_list', business_code=business_code) }}" class="float-end pe-3">
+                  <i class="fa fa-times me-sm-1"></i>
+                </a>
+            </div>
+
+            <div class="card-body p-3">
+              <label>{{ language.petition }}</label>
+              <div class="mb-3">
+                <input
+                  id="petition_number"
+                  class="form-control"
+                  type="text"
+                  name="petition_number"
+                  value="{{ petition.petition_number }}"
+                  disabled
+                >
+              </div>
+
+              <label>{{ language.user }}</label>
+              <div class="mb-3">
+                <div class="mb-3">
+                    <input
+                          id="user_number"
+                          class="form-control"
+                          type="text"
+                          name="user_number"
+                          value="{{ petition.user_number }}"
+                          disabled
+                    >
+                </div>
+              </div>
+
+              <label>{{ language.name }}</label>
+              <div class="mb-3">
+                <div class="mb-3">
+                    <input
+                      id="petition_name"
+                      class="form-control"
+                      type="text"
+                      name="petition_name"
+                      value="{{ petition.petition_name }}"
+                      disabled
+                    >
+                </div>
+              </div>
+
+              <label>{{ language.description }}</label>
+              <div class="mb-3">
+                <div class="mb-3">
+                    <textarea
+                          id="petition_request"
+                          class="form-control"
+                          name="petition_request"
+                          rows="6"
+                          disabled
+                    >{{ petition.petition_request }}</textarea>
+                </div>
+              </div>
+
+              <label>{{ language.step }}</label>
+              <div class="mb-3">
+                <div class="mb-3">
+                    <input
+                      id="petition_step"
+                      class="form-control"
+                      type="text"
+                      name="petition_step"
+                      value="{{ petition.petition_step }}"
+                      disabled
+                    >
+                </div>
+              </div>
+
+              <label>{{ language.datestart }}</label>
+              <div class="mb-3">
+                <div class="mb-3">
+                    <input
+                          id="petition_start"
+                          class="form-control"
+                          type="text"
+                          name="petition_start"
+                          value="{{ petition.petition_date.strftime('%Y-%m-%d %H:%M') }}"
+                          disabled
+                    >
+                </div>
+              </div>
+
+              <label>{{ language.status }}</label>
+              <div class="mb-3">
+                <div class="mb-3">
+                    <select id="status_code" name="status_code" class="form-select" aria-label="Select option" disabled>
+                          {% for status in statuses %}
+                            <option value="{{ status.status_code }}" {% if status.status_code == petition.status_code %}selected{% endif %}>{{ status.status_name }}</option>
+                          {% endfor %}
+                    </select>
+                </div>
+              </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock sidepanel %}

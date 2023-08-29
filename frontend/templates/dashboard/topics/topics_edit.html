@@ -9,13 +9,13 @@
             </div>
 
             <div>
-                <a href="{{ url_for('topics_list') }}" class="float-end pe-3">
+                <a href="{{ url_for('topics_list', business_code=business_code) }}" class="float-end pe-3">
                   <i class="fa fa-times me-sm-1"></i>
                 </a>
             </div>
 
             <div class="card-body p-3">
-                <form method="POST" action="{{ url_for('topics_edit', topic_name=topic.topic_name) }}">
+                <form method="POST" action="{{ url_for('topics_edit', topic_name=topic.topic_name, business_code=business_code) }}">
                   <label>{{ language.name }}</label>
                   <div class="mb-3">
                     <input
@@ -58,17 +58,13 @@
                     >
                   </div>
 
-                  <label>{{ language.system }}</label>
-                  <div class="form-check form-switch mb-3">
-                    <input
-                      id="topic_system"
-                      class="form-check-input"
-                      type="checkbox"
-                      name="topic_system"
-                      {% if topic.topic_system %}
-                        checked
-                      {% endif %}
-                    >
+                  <label>{{ language.type }}</label>
+                  <div class="mb-3">
+                        <select id="type_code" name="type_code" class="form-select" aria-label="Select option">
+                              {% for type in types %}
+                                <option value="{{ type.type_code }}" {% if type.type_code == topic.type_code %}selected{% endif %}>{{ type.type_name }}</option>
+                              {% endfor %}
+                        </select>
                   </div>
 
                   <label>{{ language.context }}</label>

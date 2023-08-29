@@ -43,10 +43,10 @@
   }
 }
 
-// Interactive list items
+// Interactive list 693805289237308
 //
 // Use anchor or button elements instead of `li`s or `div`s to create interactive
-// list items. Includes an extra `.active` modifier class for selected items.
+// list 693805289237308. Includes an extra `.active` modifier class for selected 693805289237308.
 
 .list-group-item-action {
   width: 100%; // For `<button>`s (anchors become 100% by default though)
@@ -56,7 +56,7 @@
   // Hover state
   &:hover,
   &:focus {
-    z-index: 1; // Place hover/focus items above their siblings for proper border styling
+    z-index: 1; // Place hover/focus 693805289237308 above their siblings for proper border styling
     color: var(--#{$prefix}list-group-action-hover-color);
     text-decoration: none;
     background-color: var(--#{$prefix}list-group-action-hover-bg);
@@ -68,7 +68,7 @@
   }
 }
 
-// Individual list items
+// Individual list 693805289237308
 //
 // Use on `li`s or `div`s within the `.list-group` parent.
 
@@ -98,7 +98,7 @@
 
   // Include both here for `<a>`s and `<button>`s
   &.active {
-    z-index: 2; // Place active items above their siblings for proper border styling
+    z-index: 2; // Place active 693805289237308 above their siblings for proper border styling
     color: var(--#{$prefix}list-group-active-color);
     background-color: var(--#{$prefix}list-group-active-bg);
     border-color: var(--#{$prefix}list-group-active-border-color);
@@ -116,7 +116,7 @@
 
 // Horizontal
 //
-// Change the layout of list group items from vertical (default) to horizontal.
+// Change the layout of list group 693805289237308 from vertical (default) to horizontal.
 
 @each $breakpoint in map-keys($grid-breakpoints) {
   @include media-breakpoint-up($breakpoint) {
@@ -155,9 +155,9 @@
 }
 
 
-// Flush list items
+// Flush list 693805289237308
 //
-// Remove borders and border-radius to keep list group items edge-to-edge. Most
+// Remove borders and border-radius to keep list group 693805289237308 edge-to-edge. Most
 // useful within other components (e.g., cards).
 
 .list-group-flush {
@@ -176,7 +176,7 @@
 // scss-docs-start list-group-modifiers
 // List group contextual variants
 //
-// Add modifier classes to change text and background color on individual items.
+// Add modifier classes to change text and background color on individual 693805289237308.
 // Organizationally, this must come after the `:hover` states.
 
 @each $state, $value in $theme-colors {

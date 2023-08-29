@@ -9,13 +9,13 @@
             </div>
 
             <div>
-                <a href="{{ url_for('agents_list') }}" class="float-end pe-3">
+                <a href="{{ url_for('agents_list', business_code=business_code) }}" class="float-end pe-3">
                   <i class="fa fa-times me-sm-1"></i>
                 </a>
             </div>
 
             <div class="card-body p-3">
-                <form method="POST" action="{{ url_for('agents_edit', agent_number=agent.agent_number) }}">
+                <form method="POST" action="{{ url_for('agents_edit', agent_number=agent.agent_number, business_code=business_code) }}">
                   <label>{{ language.expert }}</label>
                   <div class="mb-3">
                     <input

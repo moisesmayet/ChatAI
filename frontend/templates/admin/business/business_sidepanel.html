@@ -1,0 +1,21 @@
+{% extends 'layouts/base_admin.html' %}
+
+{% block title %} {{ language.business }} {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+    <div class="container-fluid py-4">
+      <div class="row my-4">
+        <div class="col-lg-8 col-md-6 mb-md-0 mb-4">
+            {% set side_panel = 'true' %}
+            {% include "admin/business/business_body.html" %}
+        </div>
+
+        {% block sidepanel %}{% endblock sidepanel %}
+      </div>
+    </div>
+
+{% endblock content %}

@@ -9,7 +9,7 @@
             </div>
 
             <div>
-                <a href="{{ url_for('users_list') }}" class="float-end pe-3">
+                <a href="{{ url_for('users_list', business_code=business_code) }}" class="float-end pe-3">
                   <i class="fa fa-times me-sm-1"></i>
                 </a>
             </div>
@@ -24,7 +24,7 @@
                         {% endif %}
 
                         {% if user_message.msg_received != '' %}
-                            {% if user_message.msg_origin == 'whatsapp' %}
+                            {% if user_message.msg_origin.startswith('whatsapp') %}
                                 <div class="chatbot-message">
                                     {{ user_message.msg_received }}
                                 </div>
@@ -47,7 +47,7 @@
             </div>
 
             <div class="card-body p-3">
-                <form method="POST" action="{{ url_for('send_chat') }}">
+                <form method="POST" action="{{ url_for('send_chat', business_code=business_code) }}">
                   <input type="hidden" id="chat_number" name="chat_number" value="{{ user_number }}" />
                   <input type="hidden" id="chat_whatsapp" name="chat_whatsapp" value="{{ user_whatsapp }}" />
                   <div class="mb-3 float-start w-85">

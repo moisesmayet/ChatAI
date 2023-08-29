@@ -1,16 +1,13 @@
 import jwt
 from jwt import PyJWTError
 from typing import Union
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from functools import wraps
 from backend import main
-from backend.config.constants import openai_api_key, algorithm_hash
-from backend.model.model import Agent
-from backend.config.db import get_db_conn
-from sqlalchemy.orm import Session
+from backend.config.constants import get_default_user, get_default_hash, exists_business, get_default_business_code
 from datetime import datetime, timedelta
 
 
@@ -21,14 +18,7 @@ oauth2_schene = OAuth2PasswordBearer('/token')
 templates = Jinja2Templates(directory='./frontend/templates')
 
 
-def get_agent(agent_number):
-    db: Session = get_db_conn()
-    agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
-    db.close()
-    return agent
-
-
-def create_token(data: dict, time_expires: Union[datetime, None] = None):
+def create_token(business_code: str, data: dict, time_expires: Union[datetime, None] = None):
     data_copy = data.copy()
     if time_expires is None:
         expires = datetime.utcnow() + timedelta(minutes=15)
@@ -36,48 +26,50 @@ def create_token(data: dict, time_expires: Union[datetime, None] = None):
         expires = datetime.utcnow() + time_expires
     data_copy.update({'exp': expires})
 
-    token = jwt.encode(data_copy, openai_api_key, algorithm=algorithm_hash)
+    algorithm_hash = get_default_hash(business_code)
+    token = jwt.encode(data_copy, business_code, algorithm=algorithm_hash)
     return token
 
 
-def verify_token(token: str = Depends(oauth2_schene)):
-    try:
-        token_decode = jwt.decode(token, openai_api_key, algorithms=[algorithm_hash])
-        agent_number = token_decode.get('sub')
-        if agent_number is None:
-            raise HTTPException(status_code=402, detail='Credenciales inválidas',
-                                headers={'WWW-Authenticate': 'Bearer'})
-    except PyJWTError:
+def verify_token(business_code: str, token: str = Depends(oauth2_schene)):
+    if exists_business(business_code):
+        try:
+            algorithm_hash = get_default_hash(business_code)
+            token_decode = jwt.decode(token, business_code, algorithms=[algorithm_hash])
+            user_id = token_decode.get('sub')
+            if user_id is None:
+                raise HTTPException(status_code=402, detail='Credenciales inválidas',
+                                    headers={'WWW-Authenticate': 'Bearer'})
+        except PyJWTError:
+            raise HTTPException(status_code=402, detail='Credenciales inválidas', headers={'WWW-Authenticate': 'Bearer'})
+
+        return user_id
+    else:
         raise HTTPException(status_code=402, detail='Credenciales inválidas', headers={'WWW-Authenticate': 'Bearer'})
 
-    return agent_number
 
-
-def verify_token_web(token: str = Depends(oauth2_schene)):
-    try:
-        token_decode = jwt.decode(token, openai_api_key, algorithms=[algorithm_hash])
-        agent_number = token_decode.get('sub')
-        if agent_number is None:
+def verify_token_web(business_code: str, token: str = Depends(oauth2_schene)):
+    if exists_business(business_code):
+        try:
+            algorithm_hash = get_default_hash(business_code)
+            token_decode = jwt.decode(token, business_code, algorithms=[algorithm_hash])
+            user_id = token_decode.get('sub')
+            if user_id is None:
+                return ''
+        except PyJWTError:
             return ''
-    except PyJWTError:
+
+        return user_id
+    else:
         return ''
 
-    return agent_number
 
-
-def get_enable_agent(token: str = Depends(oauth2_schene)):
-    agent_number = verify_token(token)
-    if agent_number:
-        agent = get_agent(agent_number)
-        if agent:
-            return agent
-
-    raise HTTPException(status_code=402, detail='Credenciales inválidas', headers={'WWW-Authenticate': 'Bearer'})
-
-
-def get_busy_agent(agent: Agent = Depends(get_enable_agent)):
-    if not agent.agent_active:
-        return agent
+def get_enable_agent(business_code: str, token: str = Depends(oauth2_schene)):
+    user_id = verify_token(business_code, token)
+    if user_id:
+        user = get_default_user(business_code, user_id)
+        if user:
+            return user
 
     raise HTTPException(status_code=402, detail='Credenciales inválidas', headers={'WWW-Authenticate': 'Bearer'})
 
@@ -86,31 +78,45 @@ def auth_required(router):
     @wraps(router)
     def authorize_cookie(**kwargs):
         token = kwargs['request'].cookies.get('Authorization')
+        business_code = kwargs.get('business_code', get_default_business_code())
         if token:
             token_type, jwt_token = token.split(' ')
-            agent_number = verify_token_web(jwt_token)
+            agent_number = verify_token_web(business_code, jwt_token)
             if agent_number != '':
                 return router(**kwargs)
-        return RedirectResponse(main.dashboard_app.url_path_for('signin'))
+        return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
     return authorize_cookie
 
 
-@auth_app.post('/token')
-def auth_login(form_data: OAuth2PasswordRequestForm = Depends()):
-    agent = get_agent(form_data.username)
-    if agent:
-        if agent.verify_password(form_data.password):
+@auth_app.post('/{business_code}/token')
+def auth_login(business_code: str, form_data: OAuth2PasswordRequestForm = Depends()):
+    user_id = form_data.username
+    user = get_default_user(business_code, user_id)
+    if user:
+        if user.verify_password(form_data.password):
             token_expires = timedelta(minutes=1440)
-            access_token = create_token({'sub': agent.agent_number}, token_expires)
+            access_token = create_token(business_code, {'sub': user_id}, token_expires)
             token_type = 'bearer'
             return {'access_token': access_token, 'token_type': token_type}
 
     raise HTTPException(status_code=402, detail='Credenciales inválidas', headers={'WWW-Authenticate': 'Bearer'})
 
 
+@auth_app.get('/{business_code}/logout', response_class=HTMLResponse)
+async def auth_logout(request: Request, business_code: str):
+    redirect = get_redirect(request, business_code)
+    return redirect
+
+
 @auth_app.get('/logout', response_class=HTMLResponse)
-async def auth_logout(request: Request):
-    redirect = RedirectResponse(main.dashboard_app.url_path_for('signin'))
+async def auth_logout_admin(request: Request):
+    business_code = get_default_business_code()
+    redirect = get_redirect(request, business_code)
+    return redirect
+
+
+def get_redirect(request, business_code):
+    redirect = RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
     redirect.status_code = 302
 
     token = request.cookies.get('Authorization')
@@ -118,12 +124,8 @@ async def auth_logout(request: Request):
         redirect.set_cookie('Authorization', '')
         redirect.set_cookie('Pemission', '')
         redirect.set_cookie('UserId', '')
+        redirect.set_cookie('UserLang', '')
+        redirect.set_cookie('Menu', '')
 
     return redirect
-
-
-@auth_app.get('/auth/me')
-def auth_token(agent: Agent = Depends(get_busy_agent)):
-    return agent
-
 

@@ -66,7 +66,7 @@
               </td>
 
               <td class="align-middle text-center text-sm custom-cell-width">
-                <a href="{{ url_for('orders_view', order_number=item.order_number) }}" class="nav-link text-body font-weight-bold px-0">
+                <a href="{{ url_for('orders_view', order_number=item.order_number, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                   <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/General/Visible.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                       <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                           <path d="M3,12 C3,12 5.45454545,6 12,6 C16.9090909,6 21,12 21,12 C21,12 16.9090909,18 12,18 C5.45454545,18 3,12 3,12 Z" fill="#000000" fill-rule="nonzero" opacity="0.3"/>
@@ -78,7 +78,7 @@
 
               {% if permission == 'super' %}
                 <td class="align-middle text-center text-sm custom-cell-width">
-                  <a href="{{ url_for('orders_edit', order_number=item.order_number) }}" class="nav-link text-body font-weight-bold px-0">
+                  <a href="{{ url_for('orders_edit', order_number=item.order_number, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                     <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Design/Edit.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                         <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                             <rect x="0" y="0" width="24" height="24"/>
@@ -91,7 +91,7 @@
               {% endif %}
 
               <td class="align-middle text-center text-sm custom-cell-width">
-                <a href="{{ url_for('orders_products', order_number=item.order_number) }}" class="nav-link text-body font-weight-bold px-0">
+                <a href="{{ url_for('orders_products', order_number=item.order_number, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                   <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Shopping/Cart2.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                       <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                           <path d="M12,4.56204994 L7.76822128,9.6401844 C7.4146572,10.0644613 6.7840925,10.1217854 6.3598156,9.76822128 C5.9355387,9.4146572 5.87821464,8.7840925 6.23177872,8.3598156 L11.2317787,2.3598156 C11.6315738,1.88006147 12.3684262,1.88006147 12.7682213,2.3598156 L17.7682213,8.3598156 C18.1217854,8.7840925 18.0644613,9.4146572 17.6401844,9.76822128 C17.2159075,10.1217854 16.5853428,10.0644613 16.2317787,9.6401844 L12,4.56204994 Z" fill="#000000" fill-rule="nonzero" opacity="0.3"/>

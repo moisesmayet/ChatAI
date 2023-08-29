@@ -1,0 +1,11 @@
+{% extends 'layouts/base_init.html' %}
+
+{% block main %}
+      {% include "includes/sidebar_admin.html" %}
+
+      <main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg ">
+         {% include "includes/navigation_admin.html" %}
+         {% block content %}{% endblock content %}
+      </main>
+{% endblock main %}
+

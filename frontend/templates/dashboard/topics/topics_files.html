@@ -9,7 +9,7 @@
             </div>
 
             <div>
-                <a href="{{ url_for('topics_list') }}" class="float-end pe-3">
+                <a href="{{ url_for('topics_list', business_code=business_code) }}" class="float-end pe-3">
                   <i class="fa fa-times me-sm-1"></i>
                 </a>
             </div>
@@ -28,11 +28,11 @@
                           {% for file in topic_files %}
                             <tr>
                                 <td>
-                                    <a href="{{ url_for('topics_download', topic_name=topic_name, file_name=file) }}">{{ file }}</a>
+                                    <a href="{{ url_for('topics_download', topic_name=topic_name, file_name=file, business_code=business_code) }}">{{ file }}</a>
                                 </td>
 
                                 <td class="align-middle text-center text-sm custom-cell-width">
-                                  <a href="{{ url_for('topics_deletefile', topic_name=topic_name, file_name=file) }}" class="nav-link text-body font-weight-bold px-0">
+                                  <a href="{{ url_for('topics_deletefile', topic_name=topic_name, file_name=file, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                                     <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Home/Trash.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                                         <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                                             <rect x="0" y="0" width="24" height="24"/>
@@ -51,6 +51,7 @@
                 <div>
                     <form action="{{ url_for('topics_upload') }}" method="POST" enctype="multipart/form-data">
                         <input type="hidden" id="topic_name" name="topic_name" value="{{ topic_name }}" />
+                        <input type="hidden" id="business_code" name="business_code" value="{{ business_code }}" />
                         <div class="mb-3">
                             <label for="fileInput" class="form-label">{{ language.addfile }}</label>
                             <input class="form-control" type="file" id="fileInput" name="file">

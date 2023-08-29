@@ -15,12 +15,12 @@
               <div class="card card-plain mt-8">
                 <div class="card-header pb-0 text-left bg-transparent">
                   <h3 class="font-weight-bolder text-info text-gradient">
-                    Chat AI Dashboard
+                    {{ language.dashboard }}
                   </h3>
                 </div>
 
                 <div class="card-body">
-                  <form role="form text-left" method="POST" action="{{ url_for('signin') }}">
+                  <form role="form text-left" method="POST" action="{{ url_for('signin', business_code=business_code) }}">
 
                     <label>{{ language.expert }}</label>
                     <div class="mb-3">

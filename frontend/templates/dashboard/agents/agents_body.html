@@ -26,7 +26,7 @@
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
             {% if permission == 'super' %}
               <th class="text-center">
-                <a href="{{ url_for('agents_new') }}" class="nav-link text-body font-weight-bold px-0">
+                <a href="{{ url_for('agents_new', business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                   <i class="fa fa-plus-circle me-sm-1"></i>
                 </a>
               </th>
@@ -101,7 +101,7 @@
               </td>
 
               <td class="align-middle text-center text-sm custom-cell-width">
-                <a href="{{ url_for('agents_view', agent_number=item.agent_number) }}" class="nav-link text-body font-weight-bold px-0">
+                <a href="{{ url_for('agents_view', agent_number=item.agent_number, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                   <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/General/Visible.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                       <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                           <path d="M3,12 C3,12 5.45454545,6 12,6 C16.9090909,6 21,12 21,12 C21,12 16.9090909,18 12,18 C5.45454545,18 3,12 3,12 Z" fill="#000000" fill-rule="nonzero" opacity="0.3"/>
@@ -112,7 +112,7 @@
               </td>
 
               <td class="align-middle text-center text-sm custom-cell-width">
-                <a href="{{ url_for('agents_queries', agent_number=item.agent_number) }}" class="nav-link text-body font-weight-bold px-0">
+                <a href="{{ url_for('agents_queries', agent_number=item.agent_number, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                   <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Communication/Group-chat.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                       <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                           <path d="M16,15.6315789 L16,12 C16,10.3431458 14.6568542,9 13,9 L6.16183229,9 L6.16183229,5.52631579 C6.16183229,4.13107011 7.29290239,3 8.68814808,3 L20.4776218,3 C21.8728674,3 23.0039375,4.13107011 23.0039375,5.52631579 L23.0039375,13.1052632 L23.0206157,17.786793 C23.0215995,18.0629336 22.7985408,18.2875874 22.5224001,18.2885711 C22.3891754,18.2890457 22.2612702,18.2363324 22.1670655,18.1421277 L19.6565168,15.6315789 L16,15.6315789 Z" fill="#000000"/>
@@ -124,7 +124,7 @@
 
               {% if permission == 'super' %}
                 <td class="align-middle text-center text-sm custom-cell-width">
-                  <a href="{{ url_for('agents_edit', agent_number=item.agent_number) }}" class="nav-link text-body font-weight-bold px-0">
+                  <a href="{{ url_for('agents_edit', agent_number=item.agent_number, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                     <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Design/Edit.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                         <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                             <rect x="0" y="0" width="24" height="24"/>

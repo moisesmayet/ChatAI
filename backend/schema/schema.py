@@ -3,6 +3,34 @@ from pydantic import BaseModel
 from typing import Optional
 
 
+class AdminBase(BaseModel):
+    admin_user: str
+    admin_name: str
+    admin_password: str
+    admin_active: bool
+
+
+class AdminLogin(BaseModel):
+    admin_password: str
+
+
+class AdminDelete(BaseModel):
+    admin_user: str
+
+
+class AdminCreate(AdminBase):
+    pass
+
+
+class AdminUpdate(AdminBase):
+    pass
+
+
+class Admin(AdminBase):
+    class Config:
+        orm_mode = True
+
+
 class AgentBase(BaseModel):
     agent_number: str
     agent_name: str
@@ -65,6 +93,34 @@ class Bug(BugBase):
         orm_mode = True
 
 
+class BusinessBase(BaseModel):
+    business_code: str
+    business_name: str
+    business_contact: str
+    business_address: str
+    business_phone: str
+    business_email: str
+    business_enable: bool
+    business_create: Optional[datetime]
+
+
+class BusinessDelete(BaseModel):
+    business_code: str
+
+
+class BusinessCreate(BusinessBase):
+    pass
+
+
+class BusinessUpdate(BusinessBase):
+    pass
+
+
+class Business(BusinessBase):
+    class Config:
+        orm_mode = True
+
+
 class LogBase(BaseModel):
     id: Optional[int]
     order_number: str
@@ -86,10 +142,10 @@ class MessageBase(BaseModel):
     msg_type: str
     user_number: str
     msg_received: str
-    msg_code: str
     msg_sent: str
     msg_date: Optional[datetime]
     msg_origin: str
+    petition_number: str
 
 
 class MessageCreate(MessageBase):
@@ -136,6 +192,28 @@ class Parameter(ParameterBase):
         orm_mode = True
 
 
+class PetitionBase(BaseModel):
+    petition_number: Optional[str]
+    topic_name: str
+    status_code: str
+    petition_name: str
+    petition_request: str
+    petition_step: str
+    petition_stepfrom: str
+    petition_steptype: str
+    petition_date: datetime
+    status_code: str
+
+
+class PetitionCreate(PetitionBase):
+    pass
+
+
+class Petition(PetitionBase):
+    class Config:
+        orm_mode = True
+
+
 class ProductBase(BaseModel):
     product_code: str
     order_number: str
@@ -168,7 +246,6 @@ class Product(ProductBase):
 
 class QueryBase(BaseModel):
     id: Optional[int]
-    query_code: str
     query_sent: str
     query_received: str
     query_date: Optional[datetime]
@@ -202,10 +279,11 @@ class Status(StatusBase):
 
 class TopicBase(BaseModel):
     topic_name: str
+    topic_description: str
     topic_context: str
-    topic_rebuild: bool
     topic_order: float
-    topic_system: bool
+    topic_rebuild: bool
+    type_code: str
 
 
 class TopicCreate(TopicBase):
@@ -217,18 +295,47 @@ class Topic(TopicBase):
         orm_mode = True
 
 
+class TypeBase(BaseModel):
+    type_code: str
+    type_name: str
+
+
+class TypeCreate(TypeBase):
+    pass
+
+
+class Type(TypeBase):
+    class Config:
+        orm_mode = True
+
+
 class UserBase(BaseModel):
     user_number: str
     user_name: str
-    use_lastmsg: int
+    user_lastmsg: int
     user_wait: bool
     user_whatsapp = str
-    
+
 
 class UserCreate(UserBase):
     pass
 
 
 class User(UserBase):
+    class Config:
+        orm_mode = True
+
+
+class WsidBase(BaseModel):
+    id: Optional[int]
+    wsid_code: str
+    wsid_date: Optional[datetime]
+
+
+class WsidCreate(UserBase):
+    pass
+
+
+class Wsid(UserBase):
     class Config:
         orm_mode = True
