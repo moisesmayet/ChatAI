@@ -18,7 +18,8 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from backend.config.db import get_db_conn
 from sqlalchemy.orm import Session
-from backend.model.model import Agent, Message, Order, Product, Query, User, generate_random_key, Petition, Topic, Wsid
+from backend.model.model import Agent, Message, Order, Product, Query, User, generate_random_key, Petition, Topic, Wsid, \
+    Bug
 from backend.config.constants import business_constants, exists_business, is_catalog, is_workflow
 
 chatai_app = APIRouter()
@@ -80,6 +81,7 @@ async def webhook_whatsapp(request: Request, business_code: str):
             # ai_whatsapp = data['entry'][0]['changes'][0]['value']['metadata']['display_phone_number']
             message = ''
             message_data = data['entry'][0]['changes'][0]['value'].get('messages')
+
             if message_data:
                 # Identificador único de mensaje
                 idwa = message_data[0]['id']
@@ -97,136 +99,148 @@ async def webhook_whatsapp(request: Request, business_code: str):
                     db: Session = get_db_conn(business_code)
                     # Verificar si es un agente
                     agent = db.query(Agent).filter(Agent.agent_number == user_whatsapp).first()
-                    # Ejecutamos la consulta para obtener la cantidad de registros
+
+                    # Guardar el id del mensaje de whatsapp
                     new_wsid = Wsid(wsid_code=idwa, wsid_date=datetime.now())
                     db.add(new_wsid)
                     db.commit()
                     db.close()
 
-                    try:
-                        reply = {}
-                        filename = ''
-                        audio_awnser = ''
-                        if message_type == 'text':
-                            # Obtener el texto del mensaje
-                            message = message_data[0]['text']['body'].strip()
-                        else:
-                            if business_constants[business_code]["messages_voice"] and message_type == 'audio':
-                                # Directorio local de medias
-                                filename = re.sub(r'\W', '', idwa)
-                                local_media = os.path.join(os.getcwd(),
-                                                           f'{business_constants[business_code]["media_url"]}/{user_whatsapp}/')
-                                audio_awnser = f'{local_media}anwser_{filename}.ogg'
-                                if not os.path.exists(audio_awnser):
-                                    # Elimino el directorio
-                                    if os.path.exists(local_media):
-                                        # Eliminar el contenido del directorio
-                                        empty_dir(local_media)
-                                    else:
-                                        os.makedirs(local_media)
+                    # Verificar que el mensaje no sea viejo(más de 15 min de enviado)
+                    msg_time = int(message_data[0]['timestamp'])
+                    msg_time = datetime.fromtimestamp(msg_time)
+                    current_datetime = datetime.now()
+                    # Calcular la diferencia entre las fechas
+                    time_difference = current_datetime - msg_time
+                    # Definir el umbral en horas
+                    threshold = timedelta(minutes=business_constants[business_code]["messages_old"])
+                    if time_difference <= threshold:
+                        try:
+                            reply = {}
+                            filename = ''
+                            audio_awnser = ''
+                            openai_api_key = business_constants[business_code]["openai_api_key"]
+                            os.environ['OPENAI_API_KEY'] = openai_api_key
+                            openai.api_key = openai_api_key
 
-                                    # Obtener la url media de whatsapp
-                                    audio_url = message_data[0]['audio']['id']
-                                    audio_url = f'{business_constants[business_code]["whatsapp_url"]}{audio_url}/'
-                                    response = requests.get(audio_url, headers={
-                                        'Authorization': f'Bearer {business_constants[business_code]["whatsapp_token"]}'})
-                                    audio_data = json.loads(response.content.decode('utf-8'))
-                                    audio_url = audio_data['url']
-
-                                    # Descargar media de whatsapp
-                                    audio_ogg = f'{local_media}{filename}.ogg'
-                                    audio_text = f'{local_media}{filename}.{business_constants[business_code]["transcribe_format"]}'
-                                    response = requests.get(audio_url, headers={
-                                        'Authorization': f'Bearer {business_constants[business_code]["whatsapp_token"]}'})
-                                    with open(audio_ogg, 'wb') as file:
-                                        file.write(response.content)
-
-                                    ogg_file = os.path.join(business_constants[business_code]["media_url"], audio_ogg)
-                                    pydub.AudioSegment.from_ogg(ogg_file).export(audio_text,
-                                                                                 format=
-                                                                                 business_constants[business_code][
-                                                                                     "transcribe_format"])
-                                    audio_filename = os.path.join(business_constants[business_code]["media_url"],
-                                                                  audio_text)
-
-                                    # Realiza la transcripción del audio
-                                    message = transcribe_audio(audio_filename, business_code)
-                                    # Elimina los archivos de audio descargados
-                                    empty_dir(local_media)
-
-                                    if message != '':
-                                        # Notificar que se va a escuchar el audio
-                                        msg_audio = f'Voy a escuchar el audio que me enviaste y en breve te respondo.'
-                                        send_text([msg_audio], user_whatsapp, business_code)
-                                    else:
-                                        msg_audio = f'No se escucha bien la nota de voz.'
-
-                                        send_text([msg_audio], user_whatsapp, business_code)
-                                        save_message(user_whatsapp, '', msg_audio, message_type, 'whatsapp',
-                                                     datetime.now(), agent, None, business_code)
-                                        return JSONResponse({'status': 'success'}, status_code=200)
+                            if message_type == 'text':
+                                # Obtener el texto del mensaje
+                                message = message_data[0]['text']['body'].strip()
                             else:
-                                if message_type == 'order':
-                                    # Obtener el texto del mensaje
-                                    catalog = message_data[0]['order']['catalog_id']
-                                    products = message_data[0]['order']['product_items']
-                                    order_number = save_order(user_whatsapp, business_code)
-                                    for product in products:
-                                        price = product['item_price']
-                                        excel_values = get_row_values_excel(business_code, catalog,
-                                                                            {'key': 'id',
-                                                                             'value': product['product_retailer_id']},
-                                                                            ['id', 'title', 'description'])
-                                        excel_values = excel_values[0]
-                                        values = [excel_values['id'], excel_values['title'],
-                                                  excel_values['description'],
-                                                  price, price, product['currency'], '', 'Unidad', product['quantity'],
-                                                  order_number]
-                                        save_product(values, business_code)
+                                if business_constants[business_code]["messages_voice"] and message_type == 'audio':
+                                    # Directorio local de medias
+                                    filename = re.sub(r'\W', '', idwa)
+                                    local_media = os.path.join(os.getcwd(),
+                                                               f'{business_constants[business_code]["media_url"]}/{user_whatsapp}/')
+                                    audio_awnser = f'{local_media}answer_{filename}.ogg'
+                                    if not os.path.exists(audio_awnser):
+                                        # Elimino el directorio
+                                        if os.path.exists(local_media):
+                                            # Eliminar el contenido del directorio
+                                            empty_dir(local_media)
+                                        else:
+                                            os.makedirs(local_media)
 
-                                    anwsers = f'Su orden de compra ({order_number}) fue enviada satisfactoriamente'
-                                    send_text([anwsers], user_whatsapp, business_code)
-                                    save_message(user_whatsapp, '', anwsers, message_type, 'whatsapp',
-                                                 datetime.now(), agent, None, business_code)
-                                    return JSONResponse({'status': 'success'}, status_code=200)
-                                else:
-                                    if message_type == 'interactive':
-                                        button = message_data[0]['interactive']['button_reply']
-                                        message = button['title']
-                                        button_id = str(button['id'])
-                                        button_id = button_id.replace(']', '')
-                                        button_id = button_id.split('[')
-                                        topic_name = button_id[0]
-                                        petition_step = format_step(button_id[1])
-                                        reply = send_interactive(user_whatsapp, message, '', message_type, agent,
-                                                                 topic_name,
-                                                                 petition_step, business_code)
-                                    else:
-                                        if message_type != 'reaction':
-                                            anwsers = f'Solo puedo ayudarte si me escribes textos'
-                                            send_text([anwsers], user_whatsapp, business_code)
-                                            save_message(user_whatsapp, '', anwsers, message_type, 'whatsapp',
-                                                         datetime.now(), agent, None, business_code)
+                                        # Obtener la url media de whatsapp
+                                        audio_url = message_data[0]['audio']['id']
+                                        audio_url = f'{business_constants[business_code]["whatsapp_url"]}{audio_url}/'
+                                        response = requests.get(audio_url, headers={
+                                            'Authorization': f'Bearer {business_constants[business_code]["whatsapp_token"]}'})
+                                        audio_data = json.loads(response.content.decode('utf-8'))
+                                        audio_url = audio_data['url']
+
+                                        # Descargar media de whatsapp
+                                        audio_ogg = f'{local_media}{filename}.ogg'
+                                        audio_text = f'{local_media}{filename}.{business_constants[business_code]["transcribe_format"]}'
+                                        response = requests.get(audio_url, headers={
+                                            'Authorization': f'Bearer {business_constants[business_code]["whatsapp_token"]}'})
+                                        with open(audio_ogg, 'wb') as file:
+                                            file.write(response.content)
+
+                                        ogg_file = os.path.join(business_constants[business_code]["media_url"], audio_ogg)
+                                        pydub.AudioSegment.from_ogg(ogg_file).export(audio_text,
+                                                                                     format=
+                                                                                     business_constants[business_code][
+                                                                                         "transcribe_format"])
+                                        audio_filename = os.path.join(business_constants[business_code]["media_url"],
+                                                                      audio_text)
+
+                                        # Realiza la transcripción del audio
+                                        message = transcribe_audio(audio_filename, openai_api_key, business_code)
+                                        # Elimina los archivos de audio descargados
+                                        empty_dir(local_media)
+
+                                        if message != '':
+                                            # Notificar que se va a escuchar el audio
+                                            msg_audio = f'Voy a escuchar el audio que me enviaste y en breve te respondo.'
+                                            send_text([msg_audio], user_whatsapp, business_code)
+                                        else:
+                                            msg_audio = f'No se escucha bien la nota de voz.'
+
+                                            send_text([msg_audio], user_whatsapp, business_code)
+                                            save_message(user_whatsapp, '', msg_audio, message_type, 'whatsapp', agent, None, business_code)
                                             return JSONResponse({'status': 'success'}, status_code=200)
+                                else:
+                                    if message_type == 'order':
+                                        # Obtener el texto del mensaje
+                                        catalog = message_data[0]['order']['catalog_id']
+                                        products = message_data[0]['order']['product_items']
+                                        order_number = save_order(user_whatsapp, business_code)
+                                        for product in products:
+                                            price = product['item_price']
+                                            excel_values = get_row_values_excel(business_code, catalog,
+                                                                                {'key': 'id',
+                                                                                 'value': product['product_retailer_id']},
+                                                                                ['id', 'title', 'description'])
+                                            excel_values = excel_values[0]
+                                            values = [excel_values['id'], excel_values['title'],
+                                                      excel_values['description'],
+                                                      price, price, product['currency'], '', 'Unidad', product['quantity'],
+                                                      order_number]
+                                            save_product(values, business_code)
 
-                        # Revisar que haya mensaje
-                        if len(message):
-                            user_response = create_user(user_whatsapp, user_whatsapp,
-                                                        business_constants[business_code]["alias_user"], business_code)
-                            if not reply:
-                                reply = reply_message(message, message_type, user_response['number'],
-                                                      user_response['usuario'], agent, user_response['user_completed'],
-                                                      'whatsapp', business_code)
+                                        answers = f'Su orden de compra ({order_number}) fue enviada satisfactoriamente'
+                                        send_text([answers], user_whatsapp, business_code)
+                                        save_message(user_whatsapp, '', answers, message_type, 'whatsapp', agent, None, business_code)
+                                        return JSONResponse({'status': 'success'}, status_code=200)
+                                    else:
+                                        if message_type == 'interactive':
+                                            button = message_data[0]['interactive']['button_reply']
+                                            message = button['title']
+                                            button_id = str(button['id'])
+                                            button_id = button_id.replace(']', '')
+                                            button_id = button_id.split('[')
+                                            topic_name = button_id[0]
+                                            petition_step = format_step(button_id[1])
+                                            reply = send_interactive(user_whatsapp, message, '', message_type, agent,
+                                                                     topic_name,
+                                                                     petition_step, False, business_code)
+                                        else:
+                                            if message_type != 'reaction':
+                                                answers = f'Solo puedo ayudarte si me escribes textos'
+                                                send_text([answers], user_whatsapp, business_code)
+                                                save_message(user_whatsapp, '', answers, message_type, 'whatsapp', agent, None, business_code)
+                                                return JSONResponse({'status': 'success'}, status_code=200)
 
-                            send_messages(reply['respond'], reply['notify'], message_type, user_response, user_whatsapp,
-                                          reply['anwsers'], filename, audio_awnser, business_code)
+                            # Revisar que haya mensaje
+                            if len(message):
+                                user_response = create_user(user_whatsapp, user_whatsapp,
+                                                            business_constants[business_code]["alias_user"], business_code)
+                                if not reply:
+                                    reply = reply_message(message, message_type, user_response['number'],
+                                                          user_response['usuario'], agent, user_response['user_completed'],
+                                                          'whatsapp', business_code)
 
-                            # Retornar la respuesto en un JSON
-                            return JSONResponse({'status': 'success'}, status_code=200)
-                    except Exception as e:
-                        # En caso de error, retornar una respuesta JSON con el mensaje de error
-                        save_message(user_whatsapp, '', '', message_type, 'whatsapp', datetime.now(), agent, None, business_code)
-                        return JSONResponse({'status': 'no_messages'}, status_code=200)
+                                send_messages(reply['respond'], reply['notify'], message_type, user_response, user_whatsapp,
+                                              reply['answers'], filename, audio_awnser, business_code)
+
+                                # Retornar la respuesto en un JSON
+                                return JSONResponse({'status': 'success'}, status_code=200)
+                        except Exception as e:
+                            # En caso de error, retornar una respuesta JSON con el mensaje de error
+                            save_message(user_whatsapp, message, '', message_type, 'whatsapp', agent, None, business_code)
+                            save_bug(business_code, str(e), 'whatsapp')
+                            return JSONResponse({'status': 'no_messages'}, status_code=200)
 
     # No hay mensajes disponibles
     return JSONResponse({'status': 'no_messages'}, status_code=200)
@@ -242,25 +256,28 @@ async def webhook_web(userid: UserId, username: UserName, userwhatsapp: UserWhat
                 user_response = create_user(userid.web_userid, userwhatsapp.web_userwhatsapp, username.web_username,
                                             business_code)
 
+                openai_api_key = business_constants[business_code]["openai_api_key"]
+                os.environ['OPENAI_API_KEY'] = openai_api_key
+                openai.api_key = openai_api_key
                 reply = reply_message(question.web_question, 'text', user_response['number'], user_response['usuario'],
                                       None,
                                       user_response['user_completed'], 'web', business_code)
 
                 if reply['respond']:
-                    anwser = ' '.join(reply['anwsers'])
+                    answer = ' '.join(reply['answers'])
                 else:
-                    anwser = ''
+                    answer = ''
 
                 if reply['notify']:
                     notify(user_response['number'], user_response['whatsapp'], user_response['usuario'], business_code)
             else:
-                anwser = f'El chabot no tiene acceso al servidor desde {secretkey.web_secretkey}.'
+                answer = f'El chabot no tiene acceso al servidor desde {secretkey.web_secretkey}.'
         else:
-            anwser = f'No pude procesar tu mensaje. Por favor, intenta hacer la pregunta de otra forma.'
+            answer = f'No pude procesar tu mensaje. Por favor, intenta hacer la pregunta de otra forma.'
     else:
-        anwser = f'El servicio no esta activo.'
+        answer = f'El servicio no esta activo.'
 
-    return Answer(web_answer=anwser)
+    return Answer(web_answer=answer)
 
 
 @chatai_app.get("/backend/media/{business_code}/{filename:path}")
@@ -273,55 +290,54 @@ async def serve_media(filename: str, business_code: str):
 
 
 def reply_message(message, message_type, number_user, usuario, agent, user_completed, origin, business_code):
-    anwsers = []
+    answers = []
     agent_notify = False
-    send_anwser = True
+    send_answer = True
 
     # Conectamos a la base de datos
     db: Session = get_db_conn(business_code)
 
     if agent is None:
         role_wa = 'user'
-        agent_notify = False
 
         watting = watting_agent(number_user, business_code)
         if not watting:
-            reply = get_anwser(message, role_wa, number_user, usuario, origin, message_type, agent, business_code)
-            anwsers.append(reply['anwser'])
+            reply = get_answer(message, role_wa, number_user, usuario, origin, message_type, agent, business_code)
+            answers.append(reply['answer'])
             agent_notify = reply['notify']
-            send_anwser = reply['send_anwser']
+            send_answer = reply['send_answer']
 
             # Verificar si tiene mensajes hoy
             cantidad = db.query(Message).filter(Message.user_number == number_user,
                                                 Message.msg_date == func.CURRENT_DATE()).count()
             if cantidad == 0 and not user_completed:
-                anwsers.append(
+                answers.append(
                     f'Mi nombre es {business_constants[business_code]["alias_ai"]} y estaré aquí para cualquier información que necesites. Me gustaría saber como te llamas.')
-            anwsers_str = ' '.join(anwsers)
+            answers_str = ' '.join(answers)
         else:
             origin = 'agent'
-            anwsers_str = ''
+            answers_str = ''
 
-        save_message(number_user, message, anwsers_str.strip(), message_type, origin, datetime.now(), agent, None, business_code)
+        save_message(number_user, message, answers_str.strip(), message_type, origin, agent, None, business_code)
     else:
         usuario = agent.agent_name
         role_wa = 'agents'
-        reply = get_anwser(message, role_wa, number_user, usuario, origin, message_type, agent, business_code)
-        anwsers.append(reply['anwser'])
+        reply = get_answer(message, role_wa, number_user, usuario, origin, message_type, agent, business_code)
+        answers.append(reply['answer'])
         agent_notify = reply['notify']
-        send_anwser = reply['send_anwser']
+        send_answer = reply['send_answer']
 
-        anwsers_str = ' '.join(anwsers)
-        save_message(number_user, message, anwsers_str.strip(), message_type, origin, datetime.now(), agent, None, business_code)
+        answers_str = ' '.join(answers)
+        save_message(number_user, message, answers_str.strip(), message_type, origin, agent, None, business_code)
 
     # Cerramos la conexión y el cursor
     db.close()
 
     # Retornar status
-    return {'anwsers': anwsers, 'respond': send_anwser, 'notify': agent_notify}
+    return {'answers': answers, 'respond': send_answer, 'notify': agent_notify}
 
 
-def get_anwser(query_message, query_role, query_number, query_usuario, query_origin, query_type, query_agent,
+def get_answer(query_message, query_role, query_number, query_usuario, query_origin, query_type, query_agent,
                business_code):
     try:
         agent_notify = False
@@ -336,95 +352,101 @@ def get_anwser(query_message, query_role, query_number, query_usuario, query_ori
             else:
                 behavior = behavior.replace('{business_constants[business_code]["alias_user"]}', query_usuario)
 
-            anwser = ''
+            answer = ''
             index_context = get_index(query_message, business_constants[business_code]["topic_context"], 'None',
                                       business_code)
             if index_context != 'None' and query_role != 'agents':
                 if index_context != '0' and index_context != '1':
                     key_topic = business_constants[business_code]["topic_list"][index_context]
-                    if is_catalog(business_code, key_topic):
+                    if is_workflow(business_code, key_topic):
+                        send_answer = True
                         if query_origin == 'whatsapp':
-                            catalog = get_catalog(business_code, key_topic)
-                            payload = json_catalog(catalog)
-                            send_json(query_number, payload, business_code)
-                            anwser = f'Con gusto aquí le mostramos nuestro catálogo'
-                        else:
-                            anwser = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al WhatsApp para enviarle nuestro catálogo'
-                        return {'anwser': anwser, 'send_anwser': True, 'notify': agent_notify}
-                    else:
-                        if is_workflow(business_code, key_topic):
-                            send_anwser = True
-                            if query_origin == 'whatsapp':
-                                db: Session = get_db_conn(business_code)
-                                petition = db.query(Petition).filter(Petition.user_number == query_number,
-                                                                     Petition.topic_name == key_topic,
-                                                                     Petition.status_code == 'CRE').first()
-                                db.close()
-                                if petition is None:
-                                    workflow = get_workflow(business_code, key_topic, '', 'interactive')
-                                else:
-                                    if petition.petition_steptype != 'confirm':
-                                        petition_step = petition.petition_step
-                                        petition_steptype = petition.petition_steptype
-                                    else:
-                                        petition_step = petition.petition_stepfrom
-                                        petition_steptype = 'data'
-
-                                    petition_request = f'Desea continuar con:\n{petition.petition_request}'
-                                    workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
-                                                       'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
-                                                       'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
-                                                       'BUTTON3': 'nan', 'GOTOID3': 'nan'}
-                                    workflow = create_workflow(business_code, key_topic, petition_step, workflow_values)
-                                payload = json_button(workflow)
-                                send_json(query_number, payload, business_code)
-                                anwser = workflow['text']
-                                send_anwser = False
+                            db: Session = get_db_conn(business_code)
+                            petition = db.query(Petition).filter(Petition.user_number == query_number,
+                                                                 Petition.topic_name == key_topic,
+                                                                 Petition.status_code == 'CRE').first()
+                            db.close()
+                            if petition is None:
+                                workflow = get_workflow(business_code, key_topic, '', 'interactive', False)
                             else:
-                                anwser = f'Para ayudarle mejor con esta solicitud, le recomendamos escribir al WhatsApp'
-                            return {'anwser': anwser, 'send_anwser': send_anwser, 'notify': agent_notify}
+                                if petition.petition_steptype != 'confirm':
+                                    petition_step = petition.petition_step
+                                    petition_steptype = petition.petition_steptype
+                                else:
+                                    petition_step = petition.petition_stepfrom
+                                    petition_steptype = 'data'
+
+                                petition_request = f'Desea continuar con:\n{petition.petition_request}'
+                                workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
+                                                   'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
+                                                   'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
+                                                   'BUTTON3': 'nan', 'GOTOID3': 'nan'}
+                                workflow = create_workflow(business_code, key_topic, petition_step, workflow_values, True)
+                            payload = json_button(workflow)
+                            send_json(query_number, payload, business_code)
+                            answer = workflow['text']
+                            send_answer = False
+                        else:
+                            answer = f'Para ayudarle mejor con esta solicitud, le recomendamos escribir al WhatsApp'
+                        return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify}
+                    else:
+                        if is_catalog(business_code, key_topic):
+                            if query_origin == 'whatsapp':
+                                catalog = get_catalog(business_code, key_topic)
+                                payload = json_catalog(catalog)
+                                send_json(query_number, payload, business_code)
+                                answer = f'Con gusto aquí le mostramos nuestro catálogo'
+                            else:
+                                answer = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al WhatsApp para enviarle nuestro catálogo'
+                            return {'answer': answer, 'send_answer': True, 'notify': agent_notify}
                         else:
                             reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                                    business_code)
                             if reply:
-                                return {'anwser': reply['anwsers'][0], 'send_anwser': reply['respond'], 'notify': False}
+                                return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
 
-                    if anwser == '':
+                    if answer == '':
                         behavior += f'Basándote en la siguiente información de contexto.\\\n{{context_str}}\\\n'
                         behavior += f'Responde el siguiente texto: "{{query_str}}"\\\n'
                         qa_template = Prompt(behavior)
-                        query_index = get_query_index(key_topic, business_code)
-                        anwser = query_index.as_query_engine(text_qa_template=qa_template).query(query_message).response
 
-                    if anwser != '' and anwser is not None:
-                        anwser = anwser.replace('\\n', '\\\n')
-                        anwser = anwser.replace('\\', '')
+                        query_index = get_query_index(key_topic, business_code)
+                        answer = query_index.as_query_engine(text_qa_template=qa_template).query(query_message).response
+
+                    if answer != '' and answer is not None:
+                        answer = answer.replace('\\n', '\\\n')
+                        answer = answer.replace('\\', '')
                     else:
-                        anwser = f'No pude procesar tu mensaje. Por favor, intenta hacer la pregunta de otra forma.'
+                        answer = f'Lo siento no tengo respuesta a tu pregunta. Si deseas puedes solicitar comunicarte directamente con un {business_constants[business_code]["alias_expert"]}'
                 else:
                     if index_context == '0':
                         prompt = f'Responde 1 si el texto es un pedido o solicitud. Reponde 0 si el texto es una pregunta\\\nTexto: "{query_message}"'
                         sentence = get_completion(prompt, business_code)
                         if sentence == '1':
-                            anwser = f'Ya realicé la notificación para que te atienda un {business_constants[business_code]["alias_expert"]}.\n'
-                            anwser += f'En unos minutos uno de nuestros representantes te brindará asistencia.\n'
-                            anwser += f'Fue un placer para mi atenderte.'
+                            answer = f'Ya realicé la notificación para que te atienda un {business_constants[business_code]["alias_expert"]}.\n'
+                            answer += f'En unos minutos uno de nuestros representantes te brindará asistencia.\n'
+                            answer += f'Fue un placer para mi atenderte.'
                             agent_notify = True
                         else:
-                            anwser = get_chatcompletion(behavior, query_message, query_number, query_role,
+                            answer = get_chatcompletion(behavior, query_message, query_number, query_role,
                                                         business_code)
                     else:
+                        reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
+                                               business_code)
+                        if reply:
+                            return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
+
                         user_name = get_completion(
                             f'''Extrae el nombre de la persona del texto y si no hay nombre contesta "None": {query_message}''',
                             business_code)
                         if user_name != 'None':
                             update_user(query_number, user_name, business_code)
-                            anwser = f'{user_name}, es un placer. ¿En qué puedo ayudarte?'
+                            answer = f'{user_name}, es un placer. ¿En qué puedo ayudarte?'
                         else:
-                            anwser = get_chatcompletion(behavior, query_message, query_number, query_role,
+                            answer = get_chatcompletion(behavior, query_message, query_number, query_role,
                                                         business_code)
             else:
-                anwser = ''
+                answer = ''
                 if query_role == 'agent':
                     topic_order = f'"<1> Información del {business_constants[business_code]["alias_user"]}", "<2> Información de mensajes"'
                     sentence = get_index(query_message, topic_order, '0', business_code)
@@ -439,7 +461,7 @@ def get_anwser(query_message, query_role, query_number, query_usuario, query_ori
                                     db: Session = get_db_conn(business_code)
                                     user = db.query(User).filter(User.user_number == number).first()
                                     if user:
-                                        anwser = f'El número pertenece al {business_constants[business_code]["alias_user"]} {user.user_name}'
+                                        answer = f'El número pertenece al {business_constants[business_code]["alias_user"]} {user.user_name}'
                                     db.close()
                                 else:
                                     if sentence == '2':
@@ -451,52 +473,58 @@ def get_anwser(query_message, query_role, query_number, query_usuario, query_ori
                                             messages = db.query(Message).filter(Message.user_number == number).order_by(
                                                 Message.id.desc()).limit(cantidad).all()
                                             for message in messages:
-                                                anwser += f'[{message.msg_date}] {message.msg_sent}\n{message.msg_received}\n'
+                                                answer += f'[{message.msg_date}] {message.msg_sent}\n{message.msg_received}\n'
                                             db.close()
 
-                if anwser == '':
+                if answer == '':
                     reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                            business_code)
                     if reply:
-                        return {'anwser': reply['anwsers'][0], 'send_anwser': reply['respond'], 'notify': False}
-                    anwser = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
+                        return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
+                    answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
 
-                if anwser != '':
-                    anwser = anwser.replace('\\n', '\\\n')
-                    anwser = anwser.replace('\\', '')
+                if answer != '':
+                    answer = answer.replace('\\n', '\\\n')
+                    answer = answer.replace('\\', '')
                 else:
-                    anwser = f'No pude procesar tu mensaje. Por favor, intenta hacer la pregunta de otra forma.'
+                    answer = f'No pude procesar tu mensaje. Por favor, intenta hacer la pregunta de otra forma.'
         else:
-            anwser = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
+            answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
 
         if business_constants[business_code]["messages_translator"]:
-            language = get_language(anwser, query_message, business_code)
+            language = get_language(answer, query_message, business_code)
             if language != 'None':
-                anwser = get_promptcompletion(
-                    f'Debes traducir siguiente texto "{anwser}" al {language} y dar solo la traducción como respuesta.',
+                answer = get_promptcompletion(
+                    f'Debes traducir siguiente texto "{answer}" al {language} y dar solo la traducción como respuesta.',
                     business_code)
-                anwser = re.findall(r'"([^"]*)"', anwser)
-                anwser = anwser[0]
+                answer = re.findall(r'"([^"]*)"', answer)
+                answer = answer[0]
 
-        return {'anwser': anwser, 'send_anwser': True, 'notify': agent_notify}
+        return {'answer': answer, 'send_answer': True, 'notify': agent_notify}
     except Exception as e:
-        return {'anwser': '', 'send_anwser': False, 'notify': False}
+        save_bug(business_code, str(e), 'whatsapp')
+        return {'answer': '', 'send_answer': False, 'notify': False}
 
 
 def get_query_index(key_topic, business_code):
-    if not business_constants[business_code]["topic_index"][key_topic]:
+    topic_index = {}
+    openai_model = business_constants[business_code]['openai_model']
+    prompt_dir = business_constants[business_code]['prompt_dir']
+    index_persist_dir = business_constants[business_code]['index_persist_dir']
+
+    if key_topic not in topic_index:
+        directory_prompt = f'{prompt_dir}/{key_topic}'
+        directory_persist = f'{index_persist_dir}/{key_topic}'
         # Cargar los datos del directorio "prompt" y almacenarlos en caché
-        documents = SimpleDirectoryReader(f'backend/prompt/{key_topic}').load_data()
-        modelo = LLMPredictor(
-            llm=ChatOpenAI(temperature=0.2, model_name=business_constants[business_code]["openai_model"]))
+        documents = SimpleDirectoryReader(directory_prompt).load_data()
+        modelo = LLMPredictor(llm=ChatOpenAI(temperature=0.2, model_name=openai_model))
         service_context = ServiceContext.from_defaults(llm_predictor=modelo)
         index_storage = GPTVectorStoreIndex.from_documents(documents, service_context=service_context)
-        index_storage.storage_context.persist(
-            persist_dir=f'{business_constants[business_code]["index_persist_dir"]}/{key_topic}')
-        business_constants[business_code]["topic_index"][key_topic] = index_storage
+        index_storage.storage_context.persist(persist_dir=directory_persist)
+        topic_index[key_topic] = index_storage
         return index_storage
 
-    return business_constants[business_code]["topic_index"][key_topic]
+    return topic_index[key_topic]
 
 
 def get_index(query, options, index_default, business_code):
@@ -583,17 +611,25 @@ def get_order(number_user, business_code):
         return '0'
 
 
-def save_message(msg_number, msg_sent, msg_received, msg_type, msg_origin, msg_date, msg_agent, msg_petition, business_code):
+def save_bug(business_code, bug, origin):
+    db: Session = get_db_conn(business_code)
+    new_bug = Bug(bug_description=bug, bug_origin=origin, bug_date=datetime.now())
+    db.add(new_bug)
+    db.commit()
+    db.close()
+
+
+def save_message(msg_number, msg_sent, msg_received, msg_type, msg_origin, msg_agent, msg_petition, business_code):
     # Ejecutamos la consulta para insertar un nueva orden
     db: Session = get_db_conn(business_code)
 
     if msg_agent is None:
         new_message = Message(user_number=msg_number, msg_sent=msg_sent,
                               msg_received=msg_received, msg_type=msg_type,
-                              msg_origin=msg_origin, msg_date=msg_date, petition_number=msg_petition)
+                              msg_origin=msg_origin, msg_date=datetime.now(), petition_number=msg_petition)
     else:
         new_message = Query(agent_number=msg_number, query_sent=msg_sent, query_received=msg_received,
-                            query_type=msg_type, query_origin=msg_origin, query_date=msg_date)
+                            query_type=msg_type, query_origin=msg_origin, query_date=datetime.now())
     db.add(new_message)
     db.commit()
 
@@ -767,7 +803,7 @@ def get_product(order_number, business_code):
 
 def get_row_values_excel(business_code, topic_name, row_id, list_ids):
     list_values = []
-    dir_excel = os.path.join(os.getcwd(), f'{business_constants[business_code]["prompt_url"]}/{topic_name}/')
+    dir_excel = os.path.join(os.getcwd(), f'{business_constants[business_code]["prompt_dir"]}/{topic_name}/')
     files = os.listdir(dir_excel)
 
     for file in files:
@@ -798,7 +834,7 @@ def get_row_values_excel(business_code, topic_name, row_id, list_ids):
 
 def get_row_values_csv(business_code, topic_name, row_id, list_ids):
     list_values = {}
-    dir_csv = os.path.join(os.getcwd(), f'{business_constants[business_code]["prompt_url"]}/{topic_name}/')
+    dir_csv = os.path.join(os.getcwd(), f'{business_constants[business_code]["prompt_dir"]}/{topic_name}/')
     files = os.listdir(dir_csv)
     for file in files:
         # Ruta completa del archivo
@@ -1003,15 +1039,15 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db.close()
 
 
-def send_messages(send_anwser, send_notify, message_type, user_response, user_whatsapp, anwsers, filename, audio_awnser,
+def send_messages(send_answer, send_notify, message_type, user_response, user_whatsapp, answers, filename, audio_awnser,
                   business_code):
     # Mensajes al usuario
-    if send_anwser:
+    if send_answer:
         if message_type == 'text' or message_type == 'interactive':
-            send_text(anwsers, user_whatsapp, business_code)
+            send_text(answers, user_whatsapp, business_code)
         else:
-            anwsers_str = ' '.join(anwsers)
-            send_voice(anwsers_str, user_whatsapp, filename, business_code)
+            answers_str = ' '.join(answers)
+            send_voice(answers_str, user_whatsapp, filename, business_code)
             if os.path.exists(audio_awnser):
                 os.remove(audio_awnser)
 
@@ -1020,67 +1056,71 @@ def send_messages(send_anwser, send_notify, message_type, user_response, user_wh
                    business_code)
 
 
-def send_text(anwsers, numberwa, business_code):
+def send_text(answers, numberwa, business_code):
     mensajewa = WhatsApp(business_constants[business_code]["whatsapp_token"],
                          business_constants[business_code]["whatsapp_id"])
     # enviar los mensajes
-    for anwser in anwsers:
-        mensajewa.send_message(message=anwser, recipient_id=numberwa)
+    for answer in answers:
+        mensajewa.send_message(message=answer, recipient_id=numberwa)
 
 
-def send_voice(anwsers, numberwa, filename, business_code):
+def send_voice(answers, numberwa, filename, business_code):
     mensajewa = WhatsApp(business_constants[business_code]["whatsapp_token"],
                          business_constants[business_code]["whatsapp_id"])
-    filename = f'anwser_{filename}.mp3'
-    audio_anwser = os.path.join(os.getcwd(), f'{business_constants[business_code]["media_url"]}/{numberwa}/{filename}')
+    filename = f'answer_{filename}.mp3'
+    audio_answer = os.path.join(os.getcwd(), f'{business_constants[business_code]["media_url"]}/{numberwa}/{filename}')
     local_media = os.path.join(os.getcwd(), f'{business_constants[business_code]["media_url"]}/{numberwa}')
     if not os.path.exists(local_media):
         os.makedirs(local_media)
 
     audio = generate(
-        text=anwsers,
+        text=answers,
         voice='Rachel',
         model='eleven_multilingual_v1',
     )
-    save(audio, audio_anwser)
+    save(audio, audio_answer)
 
     audio_url = business_constants[business_code][
                     "server_url"] + f'/{business_constants[business_code]["media_url"]}/{numberwa}/{filename}'
     mensajewa.send_audio(audio=audio_url, recipient_id=numberwa)
 
 
-def send_interactive(user_whatsapp, received, anwsered, message_type, agent, topic_name, petition_step,
+def send_interactive(user_whatsapp, received, answered, message_type, agent, topic_name, petition_step, verify_data,
                      business_code):
     petition_request = ''
     petition_steptype = ''
-    anwsers = []
+    answers = []
     if petition_step != 'cancel':
-        workflow = get_workflow(business_code, topic_name, petition_step, message_type)
-        petition_step = workflow['step']
-        petition_steptype = workflow['type']
+        workflow = get_workflow(business_code, topic_name, petition_step, message_type, verify_data)
+        if workflow['process_petition']:
+            petition_step = workflow['step']
+            petition_steptype = workflow['type']
 
-        if petition_steptype != 'finish':
-            if petition_steptype == 'confirm':
-                workflow['text'] = f'{workflow["text"]}\n{received}'
-                if workflow["tag"] != '':
-                    petition_request = f'{workflow["tag"]} {received}'
+            if petition_steptype != 'finish':
+                if petition_steptype == 'confirm':
+                    workflow['text'] = f'{workflow["text"]}\n{received}'
+                    if workflow["tag"] != '':
+                        petition_request = f'{workflow["tag"]} {received}'
 
-            anwsers.append(workflow['text'])
+                answers.append(workflow['text'])
 
-            petition_number = save_petition(user_whatsapp, topic_name, petition_step, petition_steptype,
-                                            None, petition_request, business_code)
-            payload = json_button(workflow)
-            send_json(user_whatsapp, payload, business_code)
+                petition_number = save_petition(user_whatsapp, topic_name, petition_step, petition_steptype,
+                                                None, petition_request, business_code)
+                payload = json_button(workflow)
+                send_json(user_whatsapp, payload, business_code)
+            else:
+                petition_number = save_petition(user_whatsapp, topic_name, petition_step, petition_steptype,
+                                                'COM', '', business_code)
+                db: Session = get_db_conn(business_code)
+                petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
+                db.close()
+                answers.append(workflow['text'])
+                answers.append(petition.petition_request)
+                petition_number = None
+
+            msg = ' '.join(answers)
         else:
-            petition_number = save_petition(user_whatsapp, topic_name, petition_step, petition_steptype,
-                                            'COM', '', business_code)
-            db: Session = get_db_conn(business_code)
-            petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
-            db.close()
-            anwsers.append(workflow['text'])
-            anwsers.append(petition.petition_request)
-
-        msg = ' '.join(anwsers)
+            return {}
     else:
         petition_number = save_petition(user_whatsapp, topic_name, petition_step, 'cancel',
                                         'CAN', petition_request, business_code)
@@ -1088,23 +1128,22 @@ def send_interactive(user_whatsapp, received, anwsered, message_type, agent, top
             msg = f'La solicitud {petition_number} fue cancelada. Si desea algo más, con gusto le ayudaré'
         else:
             msg = f'Si desea algo más, con gusto le ayudaré'
-            petition_number = None
-        anwsers.append(msg)
+        answers.append(msg)
+        petition_number = None
 
     if received == '':
         received = msg
     else:
-        anwsered = msg
+        answered = msg
 
-    save_message(user_whatsapp, received, anwsered, message_type, 'whatsapp',
-                 datetime.now(), agent, petition_number, business_code)
+    save_message(user_whatsapp, received, answered, message_type, 'whatsapp', agent, petition_number, business_code)
 
     if petition_steptype != 'finish' and petition_step != 'cancel':
-        send_anwser = False
+        send_answer = False
     else:
-        send_anwser = True
+        send_answer = True
 
-    return {'anwsers': anwsers, 'respond': send_anwser, 'notify': False}
+    return {'answers': answers, 'respond': send_answer, 'notify': False}
 
 
 def send_json(numberwa, jsonwa, business_code):
@@ -1113,7 +1152,7 @@ def send_json(numberwa, jsonwa, business_code):
     mensajewa.send_custom_json(recipient_id=numberwa, data=jsonwa)
 
 
-def create_workflow(business_code, workflow_name, workflow_step, workflow_values):
+def create_workflow(business_code, workflow_name, workflow_step, workflow_values, workflow_process):
     db: Session = get_db_conn(business_code)
     topic = db.query(Topic).filter(Topic.topic_name == workflow_name).first()
     db.close()
@@ -1149,26 +1188,33 @@ def create_workflow(business_code, workflow_name, workflow_step, workflow_values
             }
             buttons.append(button)
 
-    workflow = {'step': workflow_step, 'petition': topic.topic_description, 'buttons': buttons,
-                'text': workflow_values['TEXT'],
+    workflow = {'step': workflow_step, 'petition': topic.topic_description, 'process_petition': workflow_process,
+                'buttons': buttons, 'text': workflow_values['TEXT'],
                 'type': workflow_values['TYPE'], 'tag': workflow_values['TAG']}
 
     return workflow
 
 
-def get_workflow(business_code, workflow_name, workflow_step, workflow_type):
+def get_workflow(business_code, workflow_name, workflow_step, workflow_type, workflow_verify):
     excel_values = get_row_values_excel(business_code, workflow_name, {'key': 'ID', 'value': workflow_step},
                                         ['NEXTID', 'TEXT', 'TYPE', 'TAG', 'BUTTON1', 'GOTOID1', 'BUTTON2', 'GOTOID2',
                                          'BUTTON3',
                                          'GOTOID3'])
-    if workflow_type != 'interactive' and excel_values[0]['TYPE'] == 'data':
+
+    petition_steptype = excel_values[0]['TYPE']
+    if not workflow_verify or petition_steptype == 'data':
+        process_petition = True
+    else:
+        process_petition = False
+
+    if workflow_type != 'interactive' and petition_steptype == 'data':
         workflow_step = format_step(excel_values[0]['NEXTID'])
         excel_values = get_row_values_excel(business_code, workflow_name, {'key': 'ID', 'value': workflow_step},
                                             ['TEXT', 'TYPE', 'TAG', 'BUTTON1', 'GOTOID1', 'BUTTON2', 'GOTOID2',
                                              'BUTTON3',
                                              'GOTOID3'])
 
-    return create_workflow(business_code, workflow_name, workflow_step, excel_values[0])
+    return create_workflow(business_code, workflow_name, workflow_step, excel_values[0], process_petition)
 
 
 def get_catalog(business_code, catalog):
@@ -1195,10 +1241,9 @@ def get_reply_info(query_message, query_number, query_origin, query_type, query_
     if query_origin == 'whatsapp':
         petition = get_petition_workflow(query_number, business_code)
         if petition is not None:
-            if petition.petition_steptype == 'data':
-                reply = send_interactive(query_number, query_message, '', query_type,
-                                         query_agent, petition.topic_name,
-                                         petition.petition_step, business_code)
+            reply = send_interactive(query_number, query_message, '', query_type,
+                                     query_agent, petition.topic_name,
+                                     petition.petition_step, True, business_code)
     return reply
 
 
@@ -1316,13 +1361,13 @@ def json_list():
     return payload
 
 
-def transcribe_audio(audio, business_code):
+def transcribe_audio(audio, api_key, business_code):
     if business_constants[business_code]["transcribe_api"] == 'openai':
         # Traductor de voz a texto openai whisper
         model_id = 'whisper-1'
         media_file = open(audio, 'rb')
         response = openai.Audio.transcribe(
-            api_key=business_constants[business_code]["openai_api_key"],
+            api_key=api_key,
             model=model_id,
             file=media_file
         )

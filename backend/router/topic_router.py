@@ -47,7 +47,7 @@ def topics_files(request: Request, business_code: str, topic_name: str):
     db: Session = get_db_conn(business_code)
     topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
     db.close()
-    dir_topic = f'{business_constants[business_code]["prompt_url"]}/{topic_name}'
+    dir_topic = f'{business_constants[business_code]["prompt_dir"]}/{topic_name}'
     topic_files = []
     if os.path.exists(dir_topic):
         topic_files = os.listdir(dir_topic)
@@ -152,7 +152,7 @@ async def topics_delete(request: Request, business_code: str, topic_name: str):
         db.commit()
         db.close()
 
-        dir_to_empty = os.path.join(business_constants[business_code]["prompt_url"], topic_name)
+        dir_to_empty = os.path.join(business_constants[business_code]["prompt_dir"], topic_name)
         if os.path.exists(dir_to_empty):
             shutil.rmtree(dir_to_empty)
         dir_to_empty = os.path.join(business_constants[business_code]["index_persist_dir"], topic_name)
@@ -174,7 +174,7 @@ async def topics_upload(request: Request, file: UploadFile):
     business_code = form['business_code']
 
     contents = await file.read()
-    directory_path = os.path.join(business_constants[business_code]["prompt_url"], topic_name)
+    directory_path = os.path.join(business_constants[business_code]["prompt_dir"], topic_name)
 
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
@@ -192,7 +192,7 @@ async def topics_upload(request: Request, file: UploadFile):
 
 @topic_app.get("/{business_code}/topics/deletefile/{topic_name}/{file_name}")
 async def topics_deletefile(topic_name: str, file_name: str, business_code: str):
-    file_path = os.path.join(business_constants[business_code]["prompt_url"], topic_name, file_name)
+    file_path = os.path.join(business_constants[business_code]["prompt_dir"], topic_name, file_name)
 
     if os.path.exists(file_path):
         os.remove(file_path)
@@ -205,7 +205,7 @@ async def topics_deletefile(topic_name: str, file_name: str, business_code: str)
 @topic_app.get('/{business_code}/topics/download/{topic_name}/{file_name}')
 async def topics_download(topic_name: str, file_name: str, business_code: str):
     # Lógica para obtener la ruta completa del archivo
-    file_path = os.path.join(business_constants[business_code]["prompt_url"], topic_name, file_name)
+    file_path = os.path.join(business_constants[business_code]["prompt_dir"], topic_name, file_name)
 
     # Utiliza la clase FileResponse para enviar el archivo al navegador
     return FileResponse(file_path, filename=file_name, media_type='application/octet-stream')

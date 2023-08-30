@@ -1,7 +1,6 @@
 import json
 import os
 import shutil
-import openai
 from elevenlabs import set_api_key
 from backend.config.db import get_db_conn, get_business, match_business_code_local, business_code_local
 from sqlalchemy.orm import Session
@@ -145,8 +144,8 @@ for business in business_enables:
     make_dirs(index_persist_dir)
 
     # Directorio de prompt
-    prompt_url = f'backend/prompt/{business.business_code}'
-    make_dirs(prompt_url)
+    prompt_dir = f'backend/prompt/{business.business_code}'
+    make_dirs(prompt_dir)
 
     # Directorio de media
     media_url = f'backend/media/{business.business_code}'
@@ -158,8 +157,6 @@ for business in business_enables:
     # OpenAI API key
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'openai_api_key').first()
     openai_api_key = parameter.parameter_value
-    os.environ['OPENAI_API_KEY'] = openai_api_key
-    openai.api_key = openai_api_key
 
     # OpenAI Model
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'openai_model').first()
@@ -205,6 +202,8 @@ for business in business_enables:
     # Modificar textos(audios y traducciones)
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'messages_wait').first()
     messages_wait = int(parameter.parameter_value)
+    parameter = db.query(Parameter).filter(Parameter.parameter_name == 'messages_old').first()
+    messages_old = int(parameter.parameter_value)
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'transcribe_api').first()
     transcribe_api = parameter.parameter_value
     transcribe_format = f'mp3' if transcribe_api == 'openai' else f'wav'
@@ -273,18 +272,21 @@ for business in business_enables:
                 persist_dir = os.path.join(os.getcwd(), f'{index_persist_dir}/{topic}/')
                 shutil.rmtree(persist_dir)
 
-    subdirectories = next(os.walk(prompt_url))[1]
+    subdirectories = next(os.walk(prompt_dir))[1]
     # Eliminar los directorios que no están en la lista de topics
     for subdir in subdirectories:
         if subdir not in topic_names:
-            dir_to_delete = os.path.join(os.getcwd(), f'{prompt_url}/{subdir}/')
+            dir_to_delete = os.path.join(os.getcwd(), f'{prompt_dir}/{subdir}/')
             shutil.rmtree(dir_to_delete)
 
     topic_context += f'"'
-    topic_context = topic_context.replace('{alias_order}', alias_order)
+    topic_context = topic_context.replace('{alias_ai}', alias_ai)
+    topic_context = topic_context.replace('{alias_business}', alias_business)
+    topic_context = topic_context.replace('{alias_expert}', alias_expert)
+    topic_context = topic_context.replace('{alias_user}', alias_user)
     topic_context = topic_context.replace('{alias_item}', alias_item)
     topic_context = topic_context.replace('{alias_offer}', alias_offer)
-    topic_context = topic_context.replace('{alias_expert}', alias_expert)
+    topic_context = topic_context.replace('{alias_order}', alias_order)
     if topic_context[:3] == '", ':
         topic_context = topic_context[3:]
 
@@ -293,11 +295,20 @@ for business in business_enables:
     behavior_user = behavior_user.replace('{alias_ai}', alias_ai)
     behavior_user = behavior_user.replace('{alias_business}', alias_business)
     behavior_user = behavior_user.replace('{alias_expert}', alias_expert)
+    behavior_user = behavior_user.replace('{alias_user}', alias_user)
+    behavior_user = behavior_user.replace('{alias_item}', alias_item)
+    behavior_user = behavior_user.replace('{alias_offer}', alias_offer)
+    behavior_user = behavior_user.replace('{alias_order}', alias_order)
+
     behavior = db.query(Behavior).filter(Behavior.behavior_code == 'AGT').first()
     behavior_agent = str(behavior.behavior_description)
     behavior_agent = behavior_agent.replace('{alias_ai}', alias_ai)
     behavior_agent = behavior_agent.replace('{alias_business}', alias_business)
     behavior_agent = behavior_agent.replace('{alias_expert}', alias_expert)
+    behavior_agent = behavior_user.replace('{alias_user}', alias_user)
+    behavior_agent = behavior_user.replace('{alias_item}', alias_item)
+    behavior_agent = behavior_user.replace('{alias_offer}', alias_offer)
+    behavior_agent = behavior_user.replace('{alias_order}', alias_order)
 
     # Languaje
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'lang_code').first()
@@ -313,6 +324,8 @@ for business in business_enables:
                                                   'whatsapp_token': whatsapp_token,
                                                   'messages_translator': messages_translator,
                                                   'messages_voice': messages_voice,
+                                                  'messages_wait': messages_wait,
+                                                  'messages_old': messages_old,
                                                   'transcribe_api': transcribe_api,
                                                   'transcribe_format': transcribe_format, 'alias_user': alias_user,
                                                   'alias_expert': alias_expert, 'alias_order': alias_order,
@@ -322,6 +335,6 @@ for business in business_enables:
                                                   'topic_index': topic_index, 'side_menu': side_menu,
                                                   'behavior_user': behavior_user, 'behavior_agent': behavior_agent,
                                                   'messages_historical': messages_historical, 'alias_ai': alias_ai,
-                                                  'messages_wait': messages_wait, 'index_persist_dir': index_persist_dir,
-                                                  'prompt_url': prompt_url, 'media_url': media_url
+                                                  'index_persist_dir': index_persist_dir,
+                                                  'prompt_dir': prompt_dir, 'media_url': media_url
                                                   }
