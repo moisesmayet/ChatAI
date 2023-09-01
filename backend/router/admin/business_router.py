@@ -156,7 +156,7 @@ def restore_db():
             "--no-owner",
             "--verbose",
             "--clean",
-            "backend/config/chatai_clear.backup",  # Reemplaza con la ruta al archivo chatai.backup
+            "backend/config/files_defaults/chatai_clear.backup",  # Reemplaza con la ruta al archivo chatai.backup
         ]
 
         # Ejecutar el comando de restauración
