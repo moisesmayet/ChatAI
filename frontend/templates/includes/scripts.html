@@ -9,4 +9,53 @@
 
   <script src="{{ url_for('static', path='js/utils.js') }}"></script>
 
+  <script src="{{ url_for('static', path='js/jquery.js') }}"></script>
+  <script src="{{ url_for('static', path='js/plugins/moment.min.js') }}"></script>
+  <script src="{{ url_for('static', path='js/plugins/daterangepicker.min.js') }}"></script>
+
+  <script type="text/javascript">
+        $(function() {
+            $('input[name="datefilter"]').daterangepicker({
+                autoUpdateInput: false,
+      maxDate:
+        typeof options !== "undefined"
+          ? options.maxDate
+          : moment().startOf("day"),
+                locale: {
+                  format: "DD/MM/YYYY",
+                  cancelLabel: "Cancelar",
+                  applyLabel: "Aplicar",
+                  daysOfWeek: ["Do", "Lu", "Ma", "Me", "Ju", "Vi", "Sa"],
+                  monthNames: [
+                    "Enero",
+                    "Febrero",
+                    "Marzo",
+                    "Abril",
+                    "Mayo",
+                    "Junio",
+                    "Julio",
+                    "Agosto",
+                    "Septiembre",
+                    "Octubre",
+                    "Noviembre",
+                    "Diciembre"
+                  ],
+                  firstDay: 1
+                }
+            });
+
+            $('input[name="datefilter"]').on('apply.daterangepicker', function(ev, picker) {
+                $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+            });
+
+            $('input[name="datefilter"]').on('cancel.daterangepicker', function() {
+                if (startDate && endDate) {
+                    $(this).val(startDate.format('DD/MM/YYYY') + ' - ' + endDate.format('DD/MM/YYYY'));
+                } else {
+                    $(this).val('');
+                }
+            });
+          });
+  </script>
+
   

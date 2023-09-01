@@ -1,14 +1,19 @@
+import io
+import pandas as pd
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from heyoo import WhatsApp
-from datetime import datetime
+from datetime import datetime, timedelta
+from starlette.responses import StreamingResponse
 from backend import main
 from backend.config import constants
+from backend.config.constants import business_constants
 from backend.router.auth.auth_router import auth_required
 from backend.model.model import User, Message
 from backend.config.db import get_db_conn
 from sqlalchemy.orm import Session
+
 
 user_app = APIRouter()
 
@@ -97,6 +102,67 @@ async def users_edit(request: Request, business_code: str, user_number: str):
                                                'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code,
                                                'msg': msg})
         db.close()
+    return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
+
+
+@user_app.get('/{business_code}/users/report/{user_number}', response_class=HTMLResponse)
+async def users_report(request: Request, business_code: str, user_number: str):
+    permission = request.cookies.get('Permission')
+    if permission == 'super':
+        db: Session = get_db_conn(business_code)
+        users = db.query(User).order_by(User.user_name.asc()).all()
+        user = db.query(User).filter(User.user_number == user_number).first()
+        db.close()
+
+        fecha_actual = datetime.now()
+        # Obtener la fecha inicial del mes actual
+        date_from = fecha_actual.replace(day=1).strftime('%d-%m-%Y')
+        # Calcular la fecha final del mes actual
+        date_to = fecha_actual.replace(day=28) + timedelta(days=4)
+        date_to = (date_to - timedelta(days=date_to.day)).strftime('%d-%m-%Y')
+        datefilter = f'{date_from} - {date_to}'
+
+        return templates.TemplateResponse('dashboard/users/users_report.html',
+                                          {'request': request, 'users': users, 'user': user, 'user_number': user_number, 'datefilter': datefilter,
+                                           'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+
+    return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
+
+
+@user_app.post('/{business_code}/users/report/{user_number}', response_class=HTMLResponse)
+async def users_report(request: Request, business_code: str, user_number: str):
+    permission = request.cookies.get('Permission')
+    if permission == 'super':
+        form = await request.form()
+        form = {field: form[field] for field in form}
+        if 'datefilter' in form:
+            datefilter = str(form['datefilter']).split(' - ')
+            date_from = datefilter[0].strip()
+            date_to = datefilter[1].strip()
+            date_from = datetime.strptime(date_from, "%d-%m-%Y")
+            date_to = datetime.strptime(date_to, "%d-%m-%Y")
+
+            db: Session = get_db_conn(business_code)
+            if user_number != '0':
+                messages = db.query(Message).filter(Message.user_number == user_number, Message.msg_date >= date_from, Message.msg_date <= date_to).all()
+            else:
+                messages = db.query(Message).filter(Message.msg_date >= date_from, Message.msg_date <= date_to).order_by(Message.user_number.asc()).all()
+            db.close()
+
+            data = []
+            for message in messages:
+                data.append((message.user_number, message.msg_sent, message.msg_received, message.msg_origin, message.msg_type))
+
+            df = pd.DataFrame(data, columns=['Usuario', 'Enviado', 'Recibido', 'Origen', 'Typo'])
+            excel_data = io.BytesIO()
+            df.to_excel(excel_data, index=False)
+
+            excel_data.seek(0)  # Mueve el cursor al principio del archivo
+
+            return StreamingResponse(iter([excel_data.getvalue()]),
+                                     media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                     headers={"Content-Disposition": "attachment; filename=user_report.xlsx"})
+
     return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
 
 
