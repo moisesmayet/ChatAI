@@ -997,7 +997,7 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db: Session = get_db_conn(business_code)
 
     # Se busca un agente que este dispoible y lleve mas tiempo libre
-    agent = db.query(Agent).filter(Agent.agent_active.is_(True)).order_by(Agent.agent_lastcall.asc()).first()
+    agent = db.query(Agent).filter(Agent.agent_active.is_(True) and Agent.agent_staff.is_(True)).order_by(Agent.agent_lastcall.asc()).first()
     if agent:
         agent_number = agent.agent_number
         agent_whatsapp = agent.agent_whatsapp

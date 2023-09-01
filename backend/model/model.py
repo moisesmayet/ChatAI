@@ -67,7 +67,7 @@ class Business(db_conn):
     business_address = Column(Text)
     business_phone = Column(String(20))
     business_email = Column(String(254))
-    business_enable = Column(Boolean, default=False)
+    business_enable = Column(Boolean, default=True)
     business_create = Column(DateTime, default=datetime.utcnow)
 
 
