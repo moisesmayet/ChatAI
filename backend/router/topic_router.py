@@ -46,12 +46,13 @@ def topics_view(request: Request, business_code: str, topic_name: str):
 def topics_files(request: Request, business_code: str, topic_name: str):
     db: Session = get_db_conn(business_code)
     topics = db.query(Topic).order_by(Topic.topic_order.asc()).all()
+    types = db.query(Type).all()
     db.close()
     dir_topic = f'{business_constants[business_code]["prompt_dir"]}/{topic_name}'
     topic_files = []
     if os.path.exists(dir_topic):
         topic_files = os.listdir(dir_topic)
-    return templates.TemplateResponse('dashboard/topics/topics_files.html', {'request': request, 'topics': topics, 'topic_files': topic_files, 'topic_name': topic_name, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+    return templates.TemplateResponse('dashboard/topics/topics_files.html', {'request': request, 'topics': topics, 'topic_files': topic_files, 'topic_name': topic_name, 'types': types, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
 
 
 @topic_app.get('/{business_code}/topics/new', response_class=HTMLResponse)
