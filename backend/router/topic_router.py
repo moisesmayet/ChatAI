@@ -79,7 +79,7 @@ async def topics_new(request: Request, business_code: str):
             topic_rebuild = True
 
         db: Session = get_db_conn(business_code)
-        new_topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_order=form['topic_order'], topic_rebuild=topic_rebuild, type_code=form['type_code'])
+        new_topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_order=form['topic_order'], topic_rebuild=topic_rebuild, type_code=form['type_code'], topic_description=form['topic_description'])
         db.add(new_topic)
         db.commit()
         db.close()
@@ -116,9 +116,9 @@ async def topics_edit(request: Request, business_code: str, topic_name: str):
 
         db: Session = get_db_conn(business_code)
         if 'topic_order' in form:
-            topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_order=form['topic_order'], topic_rebuild=topic_rebuild,  type_code=form['type_code'])
+            topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_order=form['topic_order'], topic_rebuild=topic_rebuild,  type_code=form['type_code'], topic_description=form['topic_description'])
         else:
-            topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_rebuild=topic_rebuild,  type_code=form['type_code'])
+            topic = Topic(topic_name=topic_name, topic_context=form['topic_context'], topic_rebuild=topic_rebuild,  type_code=form['type_code'], topic_description=form['topic_description'])
         db.merge(topic)
         db.commit()
         db.close()

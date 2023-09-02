@@ -164,7 +164,6 @@ def restore_db():
         return True
     except subprocess.CalledProcessError as e:
         return False
-
     except Exception as e:
         return False
 

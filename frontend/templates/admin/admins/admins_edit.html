@@ -15,15 +15,15 @@
             </div>
 
             <div class="card-body p-3">
-                <form method="POST" action="{{ url_for('admins_edit', admin_number=admin.admin_number) }}">
+                <form method="POST" action="{{ url_for('admins_edit', admin_user=admin.admin_user) }}">
                   <label>{{ language.expert }}</label>
                   <div class="mb-3">
                     <input
-                      id="admin_number"
+                      id="admin_user"
                       class="form-control"
                       type="text"
-                      name="admin_number"
-                      value="{{ admin.admin_number }}"
+                      name="admin_user"
+                      value="{{ admin.admin_user }}"
                       disabled
                     >
                   </div>
@@ -39,29 +39,6 @@
                     >
                   </div>
 
-                  <label>{{ language.password }}</label>
-                    <div class="mb-3">
-                      <input
-                        id="admin_password"
-                        class="form-control"
-                        name="admin_password"
-                        type="password"
-                        required
-                      >
-                  </div>
-
-                  <label>Whatsapp</label>
-                  <div class="mb-3">
-                    <input
-                      id="admin_whatsapp"
-                      class="form-control"
-                      type="text"
-                      name="admin_whatsapp"
-                      value="{{ admin.admin_whatsapp }}"
-                      required
-                    >
-                  </div>
-
                   <label>{{ language.active }}</label>
                   <div class="form-check form-switch mb-3">
                     <input
@@ -70,38 +47,6 @@
                       type="checkbox"
                       name="admin_active"
                       {% if admin.admin_active %}
-                        checked
-                      {% endif %}
-                      {% if admin_logeado %}
-                        disabled
-                      {% endif %}
-                    >
-                  </div>
-
-                  <label>Staff</label>
-                  <div class="form-check form-switch mb-3">
-                    <input
-                      id="admin_staff"
-                      class="form-check-input"
-                      type="checkbox"
-                      name="admin_staff"
-                      {% if admin.admin_staff %}
-                        checked
-                      {% endif %}
-                      {% if admin_logeado %}
-                        disabled
-                      {% endif %}
-                    >
-                  </div>
-
-                  <label>Super</label>
-                  <div class="form-check form-switch mb-3">
-                    <input
-                      id="admin_super"
-                      class="form-check-input"
-                      type="checkbox"
-                      name="admin_super"
-                      {% if admin.admin_super %}
                         checked
                       {% endif %}
                       {% if admin_logeado %}

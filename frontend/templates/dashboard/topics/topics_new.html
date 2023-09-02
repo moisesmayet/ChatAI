@@ -23,7 +23,19 @@
                       class="form-control"
                       type="text"
                       name="topic_name"
-                      placeholder="Name"
+                      placeholder="{{ language.name }}"
+                      required
+                    >
+                  </div>
+
+                  <label>{{ language.description }}</label>
+                  <div class="mb-3">
+                    <input
+                      id="topic_description"
+                      class="form-control"
+                      type="text"
+                      name="topic_description"
+                      placeholder="{{ language.description }}"
                       required
                     >
                   </div>

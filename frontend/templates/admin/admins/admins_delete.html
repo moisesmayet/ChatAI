@@ -5,7 +5,7 @@
     <div class="col-lg-4 col-md-6">
         <div class="card">
             <div class="card-header pb-0">
-                <h6>{{ language.view }}</h6>
+                <h6>{{ language.delete }}</h6>
             </div>
 
             <div>
@@ -15,83 +15,53 @@
             </div>
 
             <div class="card-body p-3">
-              <label>{{ language.expert }}</label>
-              <div class="mb-3">
-                <input
-                  id="admin_number"
-                  class="form-control"
-                  type="text"
-                  name="admin_number"
-                  value="{{ admin.admin_number }}"
-                  disabled
-                >
-              </div>
-
-              <label>{{ language.name }}</label>
-              <div class="mb-3">
-                <input
-                  id="admin_name"
-                  class="form-control"
-                  type="text"
-                  name="admin_name"
-                  value="{{ admin.admin_name }}"
-                  disabled
-                >
-              </div>
-
-                  <label>Whatsapp</label>
+                <form method="POST" action="{{ url_for('admins_delete', admin_user=admin.admin_user) }}">
+                  <label>{{ language.expert }}</label>
                   <div class="mb-3">
                     <input
-                      id="admin_whatsapp"
+                      id="admin_user"
                       class="form-control"
                       type="text"
-                      name="admin_whatsapp"
-                      value="{{ admin.admin_whatsapp }}"
+                      name="admin_user"
+                      value="{{ admin.admin_user }}"
                       disabled
                     >
                   </div>
 
-              <label>{{ language.active }}</label>
-              <div class="form-check form-switch mb-3">
-                <input
-                  id="admin_active"
-                  class="form-check-input"
-                  type="checkbox"
-                  name="admin_active"
-                  {% if admin.admin_active %}
-                    checked
-                  {% endif %}
-                  disabled
-                >
-              </div>
+                  <label>{{ language.name }}</label>
+                  <div class="mb-3">
+                    <input
+                      id="admin_name"
+                      class="form-control"
+                      type="text"
+                      name="admin_name"
+                      value="{{ admin.admin_name }}"
+                      disabled
+                    >
+                  </div>
 
-              <label>Staff</label>
-              <div class="form-check form-switch mb-3">
-                <input
-                  id="admin_staff"
-                  class="form-check-input"
-                  type="checkbox"
-                  name="admin_staff"
-                  {% if admin.admin_staff %}
-                    checked
-                  {% endif %}
-                  disabled
-                >
-              </div>
+                  <label>{{ language.active }}</label>
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      id="admin_active"
+                      class="form-check-input"
+                      type="checkbox"
+                      name="admin_active"
+                      {% if admin.admin_active %}
+                        checked
+                      {% endif %}
+                      disabled
+                    >
+                  </div>
 
-              <label>Super</label>
-              <div class="form-check form-switch mb-3">
-                <input
-                  id="admin_super"
-                  class="form-check-input"
-                  type="checkbox"
-                  name="admin_super"
-                  {% if admin.admin_super %}
-                    checked
-                  {% endif %}
-                  disabled
-                >
-              </div>
+                  <div>
+                    <p class="text-danger">{{ language.deletewarning }}</p>
+                  </div>
+
+                  <div class="float-end">
+                    <button type="submit" name="topics_delete" class="btn bg-gradient-danger w-100 my-4 mb-2">{{ language.delete }}</button>
+                  </div>
+                </form>
             </div>
         </div>
     </div>
