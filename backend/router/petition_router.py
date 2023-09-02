@@ -27,13 +27,12 @@ def petitions_list(request: Request, business_code: str):
 @auth_required
 def petitions_view(request: Request, business_code: str, petition_number: str):
     permission = request.cookies.get('Permission')
-    if permission == 'super':
-        db: Session = get_db_conn(business_code)
-        petitions = db.query(Petition).order_by(Petition.petition_number.asc()).all()
-        petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
-        statuses = db.query(Status).all()
-        db.close()
-        return templates.TemplateResponse('dashboard/petitions/petitions_view.html', {'request': request, 'petitions': petitions, 'petition': petition, 'statuses': statuses, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+    db: Session = get_db_conn(business_code)
+    petitions = db.query(Petition).order_by(Petition.petition_number.asc()).all()
+    petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
+    statuses = db.query(Status).all()
+    db.close()
+    return templates.TemplateResponse('dashboard/petitions/petitions_view.html', {'request': request, 'petitions': petitions, 'petition': petition, 'statuses': statuses, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
 
 
 @petition_app.get('/{business_code}/petitions/edit/{petition_number}', response_class=HTMLResponse)

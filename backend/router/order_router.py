@@ -27,13 +27,12 @@ def orders_list(request: Request, business_code: str):
 @auth_required
 def orders_view(request: Request, business_code: str, order_number: str):
     permission = request.cookies.get('Permission')
-    if permission == 'super':
-        db: Session = get_db_conn(business_code)
-        orders = db.query(Order).order_by(Order.order_number.asc()).all()
-        order = db.query(Order).filter(Order.order_number == order_number).first()
-        statuses = db.query(Status).all()
-        db.close()
-        return templates.TemplateResponse('dashboard/orders/orders_view.html', {'request': request, 'orders': orders, 'order': order, 'statuses': statuses, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+    db: Session = get_db_conn(business_code)
+    orders = db.query(Order).order_by(Order.order_number.asc()).all()
+    order = db.query(Order).filter(Order.order_number == order_number).first()
+    statuses = db.query(Status).all()
+    db.close()
+    return templates.TemplateResponse('dashboard/orders/orders_view.html', {'request': request, 'orders': orders, 'order': order, 'statuses': statuses, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
 
 
 @order_app.get('/{business_code}/orders/{order_number}', response_class=HTMLResponse)

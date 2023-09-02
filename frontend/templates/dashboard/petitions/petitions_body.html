@@ -23,8 +23,10 @@
               <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.status }}</th>
             {% endif %}
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
-            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
-            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
+            {% if permission == 'super' %}
+              <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
+              <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
+            {% endif %}
           </tr>
         </thead>
 
