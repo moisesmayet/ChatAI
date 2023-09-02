@@ -79,6 +79,13 @@ def make_dirs(local_dir):
         os.makedirs(local_dir)
 
 
+def get_media_recipient(business_code, media_user, media_type, media_recipient):
+    media_dir = f'{business_constants[business_code]["media_url"]}/{media_user}/{media_type}/{media_recipient}'
+    if not os.path.exists(media_dir):
+        os.makedirs(media_dir)
+    return media_dir
+
+
 def exists_business(business_code):
     if business_code in business_codes:
         return True
@@ -335,6 +342,6 @@ for business in business_enables:
                                                   'topic_index': topic_index, 'side_menu': side_menu,
                                                   'behavior_user': behavior_user, 'behavior_agent': behavior_agent,
                                                   'messages_historical': messages_historical, 'alias_ai': alias_ai,
-                                                  'index_persist_dir': index_persist_dir,
-                                                  'prompt_dir': prompt_dir, 'media_url': media_url
+                                                  'index_persist_dir': index_persist_dir, 'prompt_dir': prompt_dir,
+                                                  'media_url': media_url
                                                   }

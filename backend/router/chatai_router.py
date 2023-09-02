@@ -20,7 +20,7 @@ from backend.config.db import get_db_conn
 from sqlalchemy.orm import Session
 from backend.model.model import Agent, Message, Order, Product, Query, User, generate_random_key, Petition, Topic, Wsid, \
     Bug
-from backend.config.constants import business_constants, exists_business, is_catalog, is_workflow
+from backend.config.constants import business_constants, exists_business, is_catalog, is_workflow, get_media_recipient
 
 chatai_app = APIRouter()
 
@@ -130,17 +130,10 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                 if business_constants[business_code]["messages_voice"] and message_type == 'audio':
                                     # Directorio local de medias
                                     filename = re.sub(r'\W', '', idwa)
-                                    local_media = os.path.join(os.getcwd(),
-                                                               f'{business_constants[business_code]["media_url"]}/{user_whatsapp}/')
+                                    media_sent = get_media_recipient(business_code, user_whatsapp, 'audio', 'sent')
+                                    local_media = os.path.join(os.getcwd(), f'{media_sent}/')
                                     audio_awnser = f'{local_media}answer_{filename}.ogg'
                                     if not os.path.exists(audio_awnser):
-                                        # Elimino el directorio
-                                        if os.path.exists(local_media):
-                                            # Eliminar el contenido del directorio
-                                            empty_dir(local_media)
-                                        else:
-                                            os.makedirs(local_media)
-
                                         # Obtener la url media de whatsapp
                                         audio_url = message_data[0]['audio']['id']
                                         audio_url = f'{business_constants[business_code]["whatsapp_url"]}{audio_url}/'
@@ -157,18 +150,17 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                         with open(audio_ogg, 'wb') as file:
                                             file.write(response.content)
 
-                                        ogg_file = os.path.join(business_constants[business_code]["media_url"], audio_ogg)
+                                        ogg_file = os.path.join(media_sent, audio_ogg)
                                         pydub.AudioSegment.from_ogg(ogg_file).export(audio_text,
                                                                                      format=
                                                                                      business_constants[business_code][
                                                                                          "transcribe_format"])
-                                        audio_filename = os.path.join(business_constants[business_code]["media_url"],
-                                                                      audio_text)
+                                        audio_filename = os.path.join(media_sent, audio_text)
 
                                         # Realiza la transcripción del audio
                                         message = transcribe_audio(audio_filename, openai_api_key, business_code)
-                                        # Elimina los archivos de audio descargados
-                                        empty_dir(local_media)
+                                        # Elimina el archivo de audio descargado
+                                        remove_file(audio_ogg)
 
                                         if message != '':
                                             # Notificar que se va a escuchar el audio
@@ -280,12 +272,15 @@ async def webhook_web(userid: UserId, username: UserName, userwhatsapp: UserWhat
     return Answer(web_answer=answer)
 
 
-@chatai_app.get("/backend/media/{business_code}/{filename:path}")
-async def serve_media(filename: str, business_code: str):
+@chatai_app.get("/backend/media/{business_code}/{msg_user}/{msg_type}/{msg_recipient}/{filename:path}")
+async def serve_media(business_code: str, msg_user: str, msg_type: str, msg_recipient: str, filename: str):
     file_path = ''
     if exists_business(business_code):
         # Utiliza la clase FileResponse para enviar el archivo multimedia
-        file_path = f'{business_constants[business_code]["media_url"]}/{filename}'
+        # recipient 'sent' or 'received'
+        # type 'audio', 'image', 'video' or 'document'
+        file_path = get_media_recipient(business_code, msg_user, msg_type, msg_recipient)
+        file_path = f'{file_path}/{filename}'
     return FileResponse(file_path)
 
 
@@ -1068,10 +1063,8 @@ def send_voice(answers, numberwa, filename, business_code):
     mensajewa = WhatsApp(business_constants[business_code]["whatsapp_token"],
                          business_constants[business_code]["whatsapp_id"])
     filename = f'answer_{filename}.mp3'
-    audio_answer = os.path.join(os.getcwd(), f'{business_constants[business_code]["media_url"]}/{numberwa}/{filename}')
-    local_media = os.path.join(os.getcwd(), f'{business_constants[business_code]["media_url"]}/{numberwa}')
-    if not os.path.exists(local_media):
-        os.makedirs(local_media)
+    media_received = get_media_recipient(business_code, numberwa, 'audio', 'received')
+    audio_answer = os.path.join(os.getcwd(), f'{media_received}/{filename}')
 
     audio = generate(
         text=answers,
@@ -1080,10 +1073,9 @@ def send_voice(answers, numberwa, filename, business_code):
     )
     save(audio, audio_answer)
 
-    audio_url = business_constants[business_code][
-                    "server_url"] + f'/{business_constants[business_code]["media_url"]}/{numberwa}/{filename}'
+    audio_url = business_constants[business_code]["server_url"] + f'/{media_received}/{filename}'
     mensajewa.send_audio(audio=audio_url, recipient_id=numberwa)
-
+    
 
 def send_interactive(user_whatsapp, received, answered, message_type, agent, topic_name, petition_step, verify_data,
                      business_code):
@@ -1431,6 +1423,13 @@ def empty_dir(dir_to_empty):
         if os.path.isfile(file_url):
             # Eliminar el archivo
             os.remove(file_url)
+
+
+def remove_file(file_url):
+    # Verificar si es un archivo
+    if os.path.isfile(file_url):
+        # Eliminar el archivo
+        os.remove(file_url)
 
 
 def get_petition_workflow(user_number, business_code):
