@@ -1140,6 +1140,7 @@ def send_voice(answers, numberwa, agent, filename, business_code):
 def send_interactive(user_whatsapp, received, answered, message_type, agent, topic_name, petition_step, verify_data,
                      business_code):
     petition_request = ''
+    petition_steptype = ''
     answers = []
     if petition_step != 'cancel':
         workflow = get_workflow(business_code, topic_name, petition_step, message_type, verify_data)
