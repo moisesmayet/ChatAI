@@ -166,13 +166,15 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                         if message != '':
                                             # Notificar que se va a escuchar el audio
                                             msg_audio = f'Voy a escuchar el audio que me enviaste y en breve te respondo.'
-                                            save_message(user_whatsapp, f'{message}\n{audio_filename}', msg_audio, message_type, 'whatsapp', agent, None, business_code)
+                                            save_message(user_whatsapp, f'{message}\n{audio_filename}', msg_audio,
+                                                         message_type, 'whatsapp', agent, None, business_code)
                                             send_text([msg_audio], user_whatsapp, business_code)
                                         else:
                                             msg_audio = f'No se escucha bien la nota de voz.'
 
                                             send_text([msg_audio], user_whatsapp, business_code)
-                                            save_message(user_whatsapp, audio_filename, msg_audio, message_type, 'whatsapp', agent, None, business_code)
+                                            save_message(user_whatsapp, audio_filename, msg_audio, message_type,
+                                                         'whatsapp', agent, None, business_code)
                                             return JSONResponse({'status': 'success'}, status_code=200)
                                 else:
                                     if message_type == 'order':
@@ -184,18 +186,21 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                             price = product['item_price']
                                             excel_values = get_row_values_excel(business_code, catalog,
                                                                                 {'key': 'id',
-                                                                                 'value': product['product_retailer_id']},
+                                                                                 'value': product[
+                                                                                     'product_retailer_id']},
                                                                                 ['id', 'title', 'description'])
                                             excel_values = excel_values[0]
                                             values = [excel_values['id'], excel_values['title'],
                                                       excel_values['description'],
-                                                      price, price, product['currency'], '', 'Unidad', product['quantity'],
+                                                      price, price, product['currency'], '', 'Unidad',
+                                                      product['quantity'],
                                                       order_number]
                                             save_product(values, business_code)
 
                                         answers = f'Su orden de compra ({order_number}) fue enviada satisfactoriamente'
                                         send_text([answers], user_whatsapp, business_code)
-                                        save_message(user_whatsapp, '', answers, message_type, 'whatsapp', agent, None, business_code)
+                                        save_message(user_whatsapp, '', answers, message_type, 'whatsapp', agent, None,
+                                                     business_code)
                                         return JSONResponse({'status': 'success'}, status_code=200)
                                     else:
                                         if message_type == 'interactive':
@@ -219,7 +224,9 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                                     message_type == 'location':
                                                 msg = ''
                                                 if message_type != 'sticker' and message_type != 'location':
-                                                    msg = download_media(business_code, user_whatsapp, message_data[0][message_type], message_type, idwa)
+                                                    msg = download_media(business_code, user_whatsapp,
+                                                                         message_data[0][message_type], message_type,
+                                                                         idwa)
                                                 answers = f'Gracias por tu mensaje'
                                                 send_text([answers], user_whatsapp, business_code)
                                                 save_message(user_whatsapp, msg, answers, message_type, 'whatsapp',
@@ -229,26 +236,31 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                                 if message_type != 'reaction':
                                                     answers = f'Gracias por tu mensaje'
                                                     send_text([answers], user_whatsapp, business_code)
-                                                    save_message(user_whatsapp, '', answers, message_type, 'whatsapp', agent, None, business_code)
+                                                    save_message(user_whatsapp, '', answers, message_type, 'whatsapp',
+                                                                 agent, None, business_code)
                                                     return JSONResponse({'status': 'success'}, status_code=200)
 
                             # Revisar que haya mensaje
                             if len(message):
                                 user_response = create_user(user_whatsapp, user_whatsapp,
-                                                            business_constants[business_code]["alias_user"], business_code)
+                                                            business_constants[business_code]["alias_user"],
+                                                            business_code)
                                 if not reply:
                                     reply = reply_message(message, message_type, user_response['number'],
-                                                          user_response['usuario'], agent, user_response['user_completed'],
+                                                          user_response['usuario'], agent,
+                                                          user_response['user_completed'],
                                                           'whatsapp', business_code)
 
-                                send_messages(reply['respond'], reply['notify'], message_type, user_response, user_whatsapp,
+                                send_messages(reply['respond'], reply['notify'], message_type, user_response,
+                                              user_whatsapp,
                                               reply['answers'], agent, filename, audio_awnser, business_code)
 
                                 # Retornar la respuesto en un JSON
                                 return JSONResponse({'status': 'success'}, status_code=200)
                         except Exception as e:
                             # En caso de error, retornar una respuesta JSON con el mensaje de error
-                            save_message(user_whatsapp, message, '', message_type, 'whatsapp', agent, None, business_code)
+                            save_message(user_whatsapp, message, '', message_type, 'whatsapp', agent, None,
+                                         business_code)
                             save_bug(business_code, str(e), 'whatsapp')
                             return JSONResponse({'status': 'no_messages'}, status_code=200)
 
@@ -379,10 +391,10 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                         send_answer = True
                         if query_origin == 'whatsapp':
                             db: Session = get_db_conn(business_code)
-                            petition = db.query(Petition).filter(Petition.user_number == query_number,
-                                                                 Petition.topic_name == key_topic,
-                                                                 Petition.status_code == 'CRE').first()
+                            petition = get_open_petition(query_number, key_topic, business_code)
+                            topic = db.query(Topic).filter(Topic.topic_name == key_topic).first()
                             db.close()
+
                             if petition is None:
                                 workflow = get_workflow(business_code, key_topic, '', 'interactive', False)
                             else:
@@ -393,12 +405,13 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                     petition_step = petition.petition_stepfrom
                                     petition_steptype = 'data'
 
-                                petition_request = f'Desea continuar con:\n{petition.petition_request}'
+                                petition_request = f'¿Desea continuar con "{topic.topic_description}"?'
                                 workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
                                                    'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
                                                    'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
                                                    'BUTTON3': 'nan', 'GOTOID3': 'nan'}
-                                workflow = create_workflow(business_code, key_topic, petition_step, workflow_values, True)
+                                workflow = create_workflow(business_code, key_topic, petition_step, workflow_values,
+                                                           True)
                             payload = json_button(workflow)
                             send_json(query_number, payload, business_code)
                             answer = workflow['text']
@@ -509,7 +522,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
             answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
 
         if business_constants[business_code]["messages_translator"]:
-            language = get_language(answer, query_message, business_code)
+            language = get_language(query_message, answer, business_code)
             if language != 'None':
                 answer = get_promptcompletion(
                     f'Debes traducir siguiente texto "{answer}" al {language} y dar solo la traducción como respuesta.',
@@ -661,6 +674,23 @@ def save_message(msg_number, msg_sent, msg_received, msg_type, msg_origin, msg_a
     db.close()
 
 
+def get_open_petition(number_user, topic_name, business_code):
+    db: Session = get_db_conn(business_code)
+    petition = db.query(Petition).filter(Petition.user_number == number_user,
+                                         Petition.topic_name == topic_name,
+                                         Petition.status_code == 'CRE').first()
+    if petition is not None:
+        if petition.petition_steptype.startswith('finish'):
+            petition.status_code = 'COM'
+            db.commit()
+            petition_number = create_petition(number_user, topic_name, petition.petition_stepfrom, business_code)
+            petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
+    # Cerramos la conexión y el cursor
+    db.close()
+
+    return petition
+
+
 def create_petition(number_user, topic_name, petition_step, business_code):
     # Ejecutamos la consulta para insertar un nueva orden
     db: Session = get_db_conn(business_code)
@@ -723,7 +753,7 @@ def save_petition(number_user, topic_name, petition_step, petition_steptype, sta
     # Cerramos la conexión y el cursor
     db.close()
 
-    if petition_step == 'finish' or petition_step == 'cancel':
+    if petition_steptype.startswith('finish') or petition_step == 'cancel':
         petition_number = ''
 
     return petition_number
@@ -1014,7 +1044,8 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db: Session = get_db_conn(business_code)
 
     # Se busca un agente que este dispoible y lleve mas tiempo libre
-    agent = db.query(Agent).filter(Agent.agent_active.is_(True) and Agent.agent_staff.is_(True)).order_by(Agent.agent_lastcall.asc()).first()
+    agent = db.query(Agent).filter(Agent.agent_active.is_(True) and Agent.agent_staff.is_(True)).order_by(
+        Agent.agent_lastcall.asc()).first()
     if agent:
         agent_number = agent.agent_number
         agent_whatsapp = agent.agent_whatsapp
@@ -1056,7 +1087,8 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db.close()
 
 
-def send_messages(send_answer, send_notify, message_type, user_response, user_whatsapp, answers, agent, filename, audio_awnser,
+def send_messages(send_answer, send_notify, message_type, user_response, user_whatsapp, answers, agent, filename,
+                  audio_awnser,
                   business_code):
     # Mensajes al usuario
     if send_answer:
@@ -1104,7 +1136,6 @@ def send_voice(answers, numberwa, agent, filename, business_code):
 def send_interactive(user_whatsapp, received, answered, message_type, agent, topic_name, petition_step, verify_data,
                      business_code):
     petition_request = ''
-    petition_steptype = ''
     answers = []
     if petition_step != 'cancel':
         workflow = get_workflow(business_code, topic_name, petition_step, message_type, verify_data)
@@ -1112,11 +1143,12 @@ def send_interactive(user_whatsapp, received, answered, message_type, agent, top
             petition_step = workflow['step']
             petition_steptype = workflow['type']
 
-            if petition_steptype != 'finish':
+            if not petition_steptype.startswith('finish'):
                 if petition_steptype == 'confirm':
                     workflow['text'] = f'{workflow["text"]}\n{received}'
-                    if workflow["tag"] != '':
-                        petition_request = f'{workflow["tag"]} {received}'
+                    tag = str(workflow["tag"]).strip()
+                    if tag != '':
+                        petition_request = f'{tag} {received}'
 
                 answers.append(workflow['text'])
 
@@ -1131,7 +1163,8 @@ def send_interactive(user_whatsapp, received, answered, message_type, agent, top
                 petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
                 db.close()
                 answers.append(workflow['text'])
-                answers.append(petition.petition_request)
+                if petition_steptype == 'finish_request':
+                    answers.append(petition.petition_request)
                 petition_number = None
 
             msg = ' '.join(answers)
@@ -1154,7 +1187,7 @@ def send_interactive(user_whatsapp, received, answered, message_type, agent, top
 
     save_message(user_whatsapp, received, answered, message_type, 'whatsapp', agent, petition_number, business_code)
 
-    if petition_steptype != 'finish' and petition_step != 'cancel':
+    if not petition_steptype.startswith('finish') and petition_step != 'cancel':
         send_answer = False
     else:
         send_answer = True
@@ -1174,7 +1207,8 @@ def create_workflow(business_code, workflow_name, workflow_step, workflow_values
     db.close()
 
     buttons = []
-    if workflow_values['TYPE'] != 'finish':
+    petition_steptype = workflow_values['TYPE']
+    if not petition_steptype.startswith('finish'):
         button = {
             "type": "reply",
             "reply": {
@@ -1407,12 +1441,16 @@ def transcribe_audio(audio, api_key, business_code):
 
 
 def get_language(query, anwers, business_code):
-    language = get_completion(f'Responde "None" si el idioma texto "{query}" es igual al idioma del texto "{anwers}"',
-                              business_code)
-    if language != 'None':
-        language = get_completion(f'Responde cuál es el idioma del siguiente texto "{query}". ejemplo: "Español"',
-                                  business_code)
-    return language
+    lang_code = str(business_constants[business_code]['lang_code']).split('-')[1]
+    languaje_query = get_completion(f'Responde cuál es el idioma del siguiente texto "{query}". ejemplo: "Español"',
+                                    business_code)
+    if lang_code != languaje_query:
+        languaje_anwer = get_completion(f'Responde cuál es el idioma del siguiente texto "{anwers}". ejemplo: "Español"',
+                                        business_code)
+        if languaje_query != languaje_anwer:
+            return languaje_query
+
+    return 'None'
 
 
 def watting_agent(user_number, business_code):

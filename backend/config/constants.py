@@ -326,7 +326,7 @@ for business in business_enables:
     business_constants[business.business_code] = {'openai_api_key': openai_api_key, 'algorithm_hash': algorithm_hash,
                                                   'openai_model': openai_model,
                                                   'openai_engine': openai_engine, 'server_url': server_url,
-                                                  'server_key': server_key,
+                                                  'server_key': server_key, 'lang_code': lang_code,
                                                   'whatsapp_id': whatsapp_id, 'whatsapp_url': whatsapp_url,
                                                   'whatsapp_token': whatsapp_token,
                                                   'messages_translator': messages_translator,
