@@ -119,6 +119,7 @@ async def webhook_whatsapp(request: Request, business_code: str):
                             reply = {}
                             filename = ''
                             audio_awnser = ''
+                            audio_filename = ''
                             openai_api_key = business_constants[business_code]["openai_api_key"]
                             os.environ['OPENAI_API_KEY'] = openai_api_key
                             openai.api_key = openai_api_key
@@ -165,12 +166,13 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                         if message != '':
                                             # Notificar que se va a escuchar el audio
                                             msg_audio = f'Voy a escuchar el audio que me enviaste y en breve te respondo.'
+                                            save_message(user_whatsapp, f'{message}\n{audio_filename}', msg_audio, message_type, 'whatsapp', agent, None, business_code)
                                             send_text([msg_audio], user_whatsapp, business_code)
                                         else:
                                             msg_audio = f'No se escucha bien la nota de voz.'
 
                                             send_text([msg_audio], user_whatsapp, business_code)
-                                            save_message(user_whatsapp, '', msg_audio, message_type, 'whatsapp', agent, None, business_code)
+                                            save_message(user_whatsapp, audio_filename, msg_audio, message_type, 'whatsapp', agent, None, business_code)
                                             return JSONResponse({'status': 'success'}, status_code=200)
                                 else:
                                     if message_type == 'order':
@@ -208,11 +210,26 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                                                      topic_name,
                                                                      petition_step, False, business_code)
                                         else:
-                                            if message_type != 'reaction':
-                                                answers = f'Solo puedo ayudarte si me escribes textos'
+                                            if message_type == 'contact' or \
+                                                    message_type == 'document' or \
+                                                    message_type == 'image' or \
+                                                    message_type == 'video' or \
+                                                    message_type == 'sticker' or \
+                                                    message_type == 'location':
+                                                msg = ''
+                                                if message_type != 'sticker' and message_type != 'location':
+                                                    msg = download_media(business_code, user_whatsapp, message_data[0][message_type], message_type, idwa)
+                                                answers = f'Gracias por tu mensaje'
                                                 send_text([answers], user_whatsapp, business_code)
-                                                save_message(user_whatsapp, '', answers, message_type, 'whatsapp', agent, None, business_code)
+                                                save_message(user_whatsapp, msg, answers, message_type, 'whatsapp',
+                                                             agent, None, business_code)
                                                 return JSONResponse({'status': 'success'}, status_code=200)
+                                            else:
+                                                if message_type != 'reaction':
+                                                    answers = f'Gracias por tu mensaje'
+                                                    send_text([answers], user_whatsapp, business_code)
+                                                    save_message(user_whatsapp, '', answers, message_type, 'whatsapp', agent, None, business_code)
+                                                    return JSONResponse({'status': 'success'}, status_code=200)
 
                             # Revisar que haya mensaje
                             if len(message):
@@ -224,7 +241,7 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                                           'whatsapp', business_code)
 
                                 send_messages(reply['respond'], reply['notify'], message_type, user_response, user_whatsapp,
-                                              reply['answers'], filename, audio_awnser, business_code)
+                                              reply['answers'], agent, filename, audio_awnser, business_code)
 
                                 # Retornar la respuesto en un JSON
                                 return JSONResponse({'status': 'success'}, status_code=200)
@@ -305,15 +322,18 @@ def reply_message(message, message_type, number_user, usuario, agent, user_compl
             # Verificar si tiene mensajes hoy
             cantidad = db.query(Message).filter(Message.user_number == number_user,
                                                 Message.msg_date == func.CURRENT_DATE()).count()
+            """
             if cantidad == 0 and not user_completed:
                 answers.append(
                     f'Mi nombre es {business_constants[business_code]["alias_ai"]} y estaré aquí para cualquier información que necesites. Me gustaría saber como te llamas.')
+            """
             answers_str = ' '.join(answers)
         else:
             origin = 'agent'
             answers_str = ''
 
-        save_message(number_user, message, answers_str.strip(), message_type, origin, agent, None, business_code)
+        if message_type != 'audio':
+            save_message(number_user, message, answers_str.strip(), message_type, origin, agent, None, business_code)
     else:
         usuario = agent.agent_name
         role_wa = 'agents'
@@ -323,7 +343,8 @@ def reply_message(message, message_type, number_user, usuario, agent, user_compl
         send_answer = reply['send_answer']
 
         answers_str = ' '.join(answers)
-        save_message(number_user, message, answers_str.strip(), message_type, origin, agent, None, business_code)
+        if message_type != 'audio':
+            save_message(number_user, message, answers_str.strip(), message_type, origin, agent, None, business_code)
 
     # Cerramos la conexión y el cursor
     db.close()
@@ -1034,7 +1055,7 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db.close()
 
 
-def send_messages(send_answer, send_notify, message_type, user_response, user_whatsapp, answers, filename, audio_awnser,
+def send_messages(send_answer, send_notify, message_type, user_response, user_whatsapp, answers, agent, filename, audio_awnser,
                   business_code):
     # Mensajes al usuario
     if send_answer:
@@ -1042,7 +1063,7 @@ def send_messages(send_answer, send_notify, message_type, user_response, user_wh
             send_text(answers, user_whatsapp, business_code)
         else:
             answers_str = ' '.join(answers)
-            send_voice(answers_str, user_whatsapp, filename, business_code)
+            send_voice(answers_str, user_whatsapp, agent, filename, business_code)
             if os.path.exists(audio_awnser):
                 os.remove(audio_awnser)
 
@@ -1059,7 +1080,7 @@ def send_text(answers, numberwa, business_code):
         mensajewa.send_message(message=answer, recipient_id=numberwa)
 
 
-def send_voice(answers, numberwa, filename, business_code):
+def send_voice(answers, numberwa, agent, filename, business_code):
     mensajewa = WhatsApp(business_constants[business_code]["whatsapp_token"],
                          business_constants[business_code]["whatsapp_id"])
     filename = f'answer_{filename}.mp3'
@@ -1074,8 +1095,10 @@ def send_voice(answers, numberwa, filename, business_code):
     save(audio, audio_answer)
 
     audio_url = business_constants[business_code]["server_url"] + f'/{media_received}/{filename}'
+    answers += f'{answers}\n{audio_url}'
+    save_message(numberwa, '', answers, 'audio', 'whatsapp', agent, None, business_code)
     mensajewa.send_audio(audio=audio_url, recipient_id=numberwa)
-    
+
 
 def send_interactive(user_whatsapp, received, answered, message_type, agent, topic_name, petition_step, verify_data,
                      business_code):
@@ -1452,3 +1475,30 @@ def format_step(petition_step):
         return str(int(petition_step))
     except ValueError:
         return petition_step
+
+
+def download_media(business_code, user_whatsapp, media_data, media_type, idwa):
+    media_id = media_data['id']
+    media_ext = str(media_data['mime_type']).split('/')[1]
+    # Directorio local de medias
+    media = None
+    filename = re.sub(r'\W', '', idwa)
+    media_sent = get_media_recipient(business_code, user_whatsapp, media_type, 'sent')
+    local_media = os.path.join(os.getcwd(), f'{media_sent}/')
+    media_awnser = f'{local_media}answer_{filename}.{media_ext}'
+    if not os.path.exists(media_awnser):
+        # Obtener la url media de whatsapp
+        media_url = f'{business_constants[business_code]["whatsapp_url"]}{media_id}/'
+        response = requests.get(media_url, headers={
+            'Authorization': f'Bearer {business_constants[business_code]["whatsapp_token"]}'})
+        media_data = json.loads(response.content.decode('utf-8'))
+        media_url = media_data['url']
+
+        # Descargar media de whatsapp
+        media = f'{local_media}{filename}.{media_ext}'
+        response = requests.get(media_url, headers={
+            'Authorization': f'Bearer {business_constants[business_code]["whatsapp_token"]}'})
+        with open(media, 'wb') as file:
+            file.write(response.content)
+
+    return media
