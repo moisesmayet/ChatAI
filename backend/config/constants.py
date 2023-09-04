@@ -216,6 +216,8 @@ for business in business_enables:
     transcribe_format = f'mp3' if transcribe_api == 'openai' else f'wav'
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'messages_historical').first()
     messages_historical = int(parameter.parameter_value)
+    parameter = db.query(Parameter).filter(Parameter.parameter_name == 'messages_lang').first()
+    messages_lang = str(parameter.parameter_value).split(',')
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'messages_translator').first()
     messages_translator = str(parameter.parameter_value)
     if messages_translator.lower() == 'si':
@@ -330,6 +332,7 @@ for business in business_enables:
                                                   'whatsapp_id': whatsapp_id, 'whatsapp_url': whatsapp_url,
                                                   'whatsapp_token': whatsapp_token,
                                                   'messages_translator': messages_translator,
+                                                  'messages_lang': messages_lang,
                                                   'messages_voice': messages_voice,
                                                   'messages_wait': messages_wait,
                                                   'messages_old': messages_old,

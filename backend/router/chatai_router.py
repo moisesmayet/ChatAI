@@ -15,7 +15,6 @@ from heyoo import WhatsApp
 from langchain.chat_models import ChatOpenAI
 from llama_index import Prompt, GPTVectorStoreIndex, SimpleDirectoryReader, LLMPredictor, ServiceContext
 from pydantic import BaseModel
-from sqlalchemy import func
 from backend.config.db import get_db_conn
 from sqlalchemy.orm import Session
 from backend.model.model import Agent, Message, Order, Product, Query, User, generate_random_key, Petition, Topic, Wsid, \
@@ -333,13 +332,15 @@ def reply_message(message, message_type, number_user, usuario, agent, user_compl
             send_answer = reply['send_answer']
 
             # Verificar si tiene mensajes hoy
-            cantidad = db.query(Message).filter(Message.user_number == number_user,
-                                                Message.msg_date == func.CURRENT_DATE()).count()
-            """
-            if cantidad == 0 and not user_completed:
+            current_date = datetime.now().date()
+            exists_msg = db.query(Message).filter(Message.user_number == number_user,
+                                                  Message.msg_date >= current_date).first()
+
+            if exists_msg is None and not user_completed:
                 answers.append(
                     f'Mi nombre es {business_constants[business_code]["alias_ai"]} y estaré aquí para cualquier información que necesites. Me gustaría saber como te llamas.')
-            """
+                message_type = 'name'
+
             answers_str = ' '.join(answers)
         else:
             origin = 'agent'
@@ -384,6 +385,9 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
             answer = ''
             index_context = get_index(query_message, business_constants[business_code]["topic_context"], 'None',
                                       business_code)
+            if index_context == 'None':
+                index_context = answering_name(business_code, query_number, 'None')
+
             if index_context != 'None' and query_role != 'agents':
                 if index_context != '0' and index_context != '1':
                     key_topic = business_constants[business_code]["topic_list"][index_context]
@@ -521,7 +525,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
         else:
             answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
 
-        if business_constants[business_code]["messages_translator"]:
+        if business_constants[business_code]["messages_translator"] and index_context != '1':
             language = get_language(query_message, answer, business_code)
             if language != 'None':
                 answer = get_promptcompletion(
@@ -1444,9 +1448,11 @@ def get_language(query, anwers, business_code):
     lang_code = str(business_constants[business_code]['lang_code']).split('-')[1]
     languaje_query = get_completion(f'Responde cuál es el idioma del siguiente texto "{query}". ejemplo: "Español"',
                                     business_code)
-    if lang_code != languaje_query:
-        languaje_anwer = get_completion(f'Responde cuál es el idioma del siguiente texto "{anwers}". ejemplo: "Español"',
-                                        business_code)
+    messages_lang = business_constants[business_code]["messages_lang"]
+    if lang_code != languaje_query and languaje_query in messages_lang:
+        languaje_anwer = get_completion(
+            f'Responde cuál es el idioma del siguiente texto "{anwers}". ejemplo: "Español"',
+            business_code)
         if languaje_query != languaje_anwer:
             return languaje_query
 
@@ -1541,3 +1547,15 @@ def download_media(business_code, user_whatsapp, media_data, media_type, idwa):
             file.write(response.content)
 
     return media
+
+
+def answering_name(business_code, user_number, index_default):
+    db: Session = get_db_conn(business_code)
+    user = db.query(User).filter(User.user_number == user_number).first()
+    last_message = db.query(Message).filter(Message.id == user.user_lastmsg, Message.msg_type == 'name').first()
+    db.close()
+
+    if last_message is not None:
+        return '1'
+
+    return index_default
