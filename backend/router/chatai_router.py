@@ -210,10 +210,11 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                                                      topic_name,
                                                                      petition_step, False, business_code)
                                         else:
-                                            if message_type == 'contact' or \
-                                                    message_type == 'document' or \
+                                            if message_type == 'audio' or \
                                                     message_type == 'image' or \
                                                     message_type == 'video' or \
+                                                    message_type == 'document' or \
+                                                    message_type == 'contact' or \
                                                     message_type == 'sticker' or \
                                                     message_type == 'location':
                                                 msg = ''
