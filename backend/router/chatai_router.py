@@ -118,7 +118,6 @@ async def webhook_whatsapp(request: Request, business_code: str):
                             reply = {}
                             filename = ''
                             audio_awnser = ''
-                            audio_filename = ''
                             openai_api_key = business_constants[business_code]["openai_api_key"]
                             os.environ['OPENAI_API_KEY'] = openai_api_key
                             openai.api_key = openai_api_key
@@ -162,16 +161,16 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                         # Elimina el archivo de audio descargado
                                         remove_file(audio_ogg)
 
-                                        if message != '':
-                                            # Notificar que se va a escuchar el audio
-                                            msg_audio = f'Voy a escuchar el audio que me enviaste y en breve te respondo.'
-                                            save_message(user_whatsapp, f'{message}\n{audio_filename}', msg_audio,
-                                                         message_type, 'whatsapp', agent, None, business_code)
-                                            send_text([msg_audio], user_whatsapp, business_code)
-                                        else:
+                                        # Notificar que se va a escuchar el audio
+                                        msg_audio = f'Voy a escuchar el audio que me enviaste y en breve te respondo.'
+                                        save_message(user_whatsapp, f'{message}\n{audio_filename}', msg_audio,
+                                                     message_type, 'whatsapp', agent, None, business_code)
+                                        send_text([msg_audio], user_whatsapp, business_code)
+
+                                        if message == '':
                                             msg_audio = f'No se escucha bien la nota de voz.'
 
-                                            send_text([msg_audio], user_whatsapp, business_code)
+                                            send_voice(msg_audio, user_whatsapp, agent, filename, business_code)
                                             save_message(user_whatsapp, audio_filename, msg_audio, message_type,
                                                          'whatsapp', agent, None, business_code)
                                             return JSONResponse({'status': 'success'}, status_code=200)
@@ -1168,7 +1167,7 @@ def send_interactive(user_whatsapp, received, answered, message_type, agent, top
                 petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
                 db.close()
                 answers.append(workflow['text'])
-                if petition_steptype == 'finish_request':
+                if petition_steptype == 'finish_req':
                     answers.append(petition.petition_request)
                 petition_number = None
 
@@ -1440,9 +1439,9 @@ def transcribe_audio(audio, api_key, business_code):
             transcription = recognizer.recognize_google(audio_data)
             return transcription.strip()
         except sr.UnknownValueError:
-            return f'No se escucha bien la nota de voz.'
+            return ''
         except sr.RequestError as e:
-            return f'En este momento no podemos atender notas de voz.'
+            return ''
 
 
 def get_language(query, anwers, business_code):
