@@ -101,7 +101,13 @@ async def profile(request: Request, business_code: str):
         user_id = request.cookies.get('UserId')
         if user_id:
             user = get_default_user(business_code, user_id)
-            return templates.TemplateResponse('accounts/profile.html', {'request': request, 'user': user, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+            if not match_business_code_local(business_code):
+                user_number = user.agent_number
+                user_name = user.agent_name
+            else:
+                user_number = user.admin_user
+                user_name = user.admin_name
+            return templates.TemplateResponse('accounts/profile.html', {'request': request, 'user_number': user_number, 'user_name': user_name, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
 
     return RedirectResponse(url=dashboard_app.url_path_for('signin', business_code=business_code))
 

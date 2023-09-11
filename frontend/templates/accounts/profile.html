@@ -26,12 +26,23 @@
                     <label>{{ language.expert }}</label>
                     <div class="mb-3">
                       <input
+                        id="usernumber"
+                        class="form-control"
+                        name="usernumber"
+                        type="text"
+                        value="{{ user_number }}"
+                        disabled
+                      >
+                    </div>
+
+                    <label>{{ language.name }}</label>
+                    <div class="mb-3">
+                      <input
                         id="username"
                         class="form-control"
                         name="username"
                         type="text"
-                        value="{{ agent.agent_number }}"
-                        disabled
+                        value="{{ user_name }}"
                       >
                     </div>
 

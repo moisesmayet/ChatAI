@@ -137,12 +137,8 @@ async def agents_edit(request: Request, business_code: str, agent_number: str):
             if 'agent_super' in form:
                 agent_super = True
 
-            password = form['agent_password']
-            if password != '':
-                agent_password = bcrypt.hash(password)
             agent.agent_name = form['agent_name']
             agent.agent_whatsapp = agent_whatsapp
-            agent.agent_password = agent_password
             agent.agent_active = agent_active
             agent.agent_staff = agent_staff
             agent.agent_super = agent_super
@@ -166,3 +162,57 @@ async def agents_edit(request: Request, business_code: str, agent_number: str):
 
     return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
 
+
+@agent_app.get('/{business_code}/agents/password/{agent_number}', response_class=HTMLResponse)
+async def agents_password(request: Request, business_code: str, agent_number: str):
+    permission = request.cookies.get('Permission')
+    if permission == 'super':
+        db: Session = get_db_conn(business_code)
+        agent_logeado = False
+        if agent_number == request.cookies.get('UserId'):
+            agent_logeado = True
+        agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
+        agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
+        db.close()
+        return templates.TemplateResponse('dashboard/agents/agents_password.html', {'request': request, 'agents': agents, 'agent': agent, 'agent_logeado': agent_logeado, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+
+    return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
+
+
+@agent_app.post('/{business_code}/agents/password/{agent_number}', response_class=HTMLResponse)
+async def agents_password(request: Request, business_code: str, agent_number: str):
+    permission = request.cookies.get('Permission')
+    if permission == 'super':
+        form = await request.form()
+        form = {field: form[field] for field in form}
+
+        password1 = form['admin_password1']
+        password2 = form['admin_password2']
+
+        db: Session = get_db_conn(business_code)
+        agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
+        if password1 != '' and password1 == password2:
+            if password1 != '':
+                agent_password = bcrypt.hash(password1)
+            agent.agent_password = agent_password
+            db.merge(agent)
+            db.commit()
+            db.close()
+
+            redirect = RedirectResponse(url=agent_app.url_path_for('agents_list', business_code=business_code))
+            redirect.status_code = 302
+            return redirect
+        else:
+            msg = f'Passwords do not match'
+            agent_logeado = False
+            if agent_number == request.cookies.get('UserId'):
+                agent_logeado = True
+            agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
+            db.close()
+
+            return templates.TemplateResponse('dashboard/agents/agents_password.html',
+                                              {'request': request, 'agents': agents, 'agent': agent,
+                                               'agent_logeado': agent_logeado,
+                                               'constants.business_constants[business_code]["alias_expert"]': constants.business_constants[business_code]["alias_expert"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code, 'msg': msg})
+
+    return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
