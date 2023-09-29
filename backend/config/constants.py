@@ -263,7 +263,7 @@ for business in business_enables:
         topic_names.append(topic)
         if item.type_code == 'CTG':
             topic_catalogs.append(topic)
-        if item.type_code == 'WFW':
+        if item.type_code == 'WFU' or item.type_code == 'WFM':
             topic_workflows.append(topic)
         topic_list[str(i)] = topic
         topic_index[topic] = ''

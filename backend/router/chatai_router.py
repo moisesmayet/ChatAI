@@ -390,67 +390,66 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
             if index_context != 'None' and query_role != 'agents':
                 if index_context != '0' and index_context != '1':
                     key_topic = business_constants[business_code]["topic_list"][index_context]
-                    if is_workflow(business_code, key_topic):
-                        send_answer = True
-                        if query_origin == 'whatsapp':
-                            db: Session = get_db_conn(business_code)
-                            petition = get_open_petition(query_number, key_topic, business_code)
-                            topic = db.query(Topic).filter(Topic.topic_name == key_topic).first()
-                            db.close()
-
-                            if petition is None:
-                                workflow = get_workflow(business_code, key_topic, '', 'interactive', False)
-                            else:
-                                if petition.petition_steptype != 'confirm':
-                                    petition_step = petition.petition_step
-                                    petition_steptype = petition.petition_steptype
-                                else:
-                                    petition_step = petition.petition_stepfrom
-                                    petition_steptype = 'data'
-
-                                petition_request = f'¿Desea continuar con "{topic.topic_description}"?'
-                                workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
-                                                   'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
-                                                   'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
-                                                   'BUTTON3': 'nan', 'GOTOID3': 'nan'}
-                                workflow = create_workflow(business_code, key_topic, petition_step, workflow_values,
-                                                           True)
-                            payload = json_button(workflow)
-                            send_json(query_number, payload, business_code)
-                            answer = workflow['text']
-                            send_answer = False
-                        else:
-                            answer = f'Para ayudarle mejor con esta solicitud, le recomendamos escribir al WhatsApp'
-                        return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify}
-                    else:
-                        if is_catalog(business_code, key_topic):
+                    db: Session = get_db_conn(business_code)
+                    topic = db.query(Topic).filter(Topic.topic_name == key_topic).first()
+                    db.close()
+                    if not is_workflow_unique(query_number, key_topic, topic.type_code, business_code):
+                        if is_workflow(business_code, key_topic):
+                            send_answer = True
                             if query_origin == 'whatsapp':
-                                catalog = get_catalog(business_code, key_topic)
-                                payload = json_catalog(catalog)
+                                petition = get_open_petition(query_number, key_topic, business_code)
+
+                                if petition is None:
+                                    workflow = get_workflow(business_code, key_topic, '', 'interactive', False)
+                                else:
+                                    if petition.petition_steptype != 'confirm':
+                                        petition_step = petition.petition_step
+                                        petition_steptype = petition.petition_steptype
+                                    else:
+                                        petition_step = petition.petition_stepfrom
+                                        petition_steptype = 'data'
+
+                                    petition_request = f'¿Desea continuar con "{topic.topic_description}"?'
+                                    workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
+                                                       'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
+                                                       'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
+                                                       'BUTTON3': 'nan', 'GOTOID3': 'nan'}
+                                    workflow = create_workflow(business_code, key_topic, petition_step, workflow_values,
+                                                               True)
+                                payload = json_button(workflow)
                                 send_json(query_number, payload, business_code)
-                                answer = f'Con gusto aquí le mostramos nuestro catálogo'
+                                answer = workflow['text']
+                                send_answer = False
                             else:
-                                answer = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al WhatsApp para enviarle nuestro catálogo'
-                            return {'answer': answer, 'send_answer': True, 'notify': agent_notify}
+                                answer = f'Para ayudarle mejor con esta solicitud, le recomendamos escribir al WhatsApp'
+                            return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify}
                         else:
-                            reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
-                                                   business_code)
-                            if reply:
-                                return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
+                            if is_catalog(business_code, key_topic):
+                                if query_origin == 'whatsapp':
+                                    catalog = get_catalog(business_code, key_topic)
+                                    payload = json_catalog(catalog)
+                                    send_json(query_number, payload, business_code)
+                                    answer = f'Con gusto aquí le mostramos nuestro catálogo'
+                                else:
+                                    answer = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al WhatsApp para enviarle nuestro catálogo'
+                                return {'answer': answer, 'send_answer': True, 'notify': agent_notify}
+                            else:
+                                reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
+                                                       business_code)
+                                if reply:
+                                    return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
 
-                    if answer == '':
-                        behavior += f'Basándote en la siguiente información de contexto.\\\n{{context_str}}\\\n'
-                        behavior += f'Responde el siguiente texto: "{{query_str}}"\\\n'
-                        qa_template = Prompt(behavior)
+                        if answer == '':
+                            behavior += f'Basándote en la siguiente información de contexto.\\\n{{context_str}}\\\n'
+                            behavior += f'Responde el siguiente texto: "{{query_str}}"\\\n'
+                            qa_template = Prompt(behavior)
 
-                        query_index = get_query_index(key_topic, business_code)
-                        answer = query_index.as_query_engine(text_qa_template=qa_template).query(query_message).response
-
-                    if answer != '' and answer is not None:
-                        answer = answer.replace('\\n', '\\\n')
-                        answer = answer.replace('\\', '')
+                            query_index = get_query_index(key_topic, business_code)
+                            answer = query_index.as_query_engine(text_qa_template=qa_template).query(query_message).response
                     else:
-                        answer = f'Lo siento no tengo respuesta a tu pregunta. Si deseas puedes solicitar comunicarte directamente con un {business_constants[business_code]["alias_expert"]}'
+                        answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
+
+                    process_answer(answer, business_code)
                 else:
                     if index_context == '0':
                         prompt = f'Responde 1 si el texto es un pedido o solicitud. Reponde 0 si el texto es una pregunta\\\nTexto: "{query_message}"'
@@ -516,11 +515,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                         return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
                     answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
 
-                if answer != '':
-                    answer = answer.replace('\\n', '\\\n')
-                    answer = answer.replace('\\', '')
-                else:
-                    answer = f'No pude procesar tu mensaje. Por favor, intenta hacer la pregunta de otra forma.'
+                process_answer(answer, business_code)
         else:
             answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
 
@@ -537,6 +532,15 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
     except Exception as e:
         save_bug(business_code, str(e), 'whatsapp')
         return {'answer': '', 'send_answer': False, 'notify': False}
+
+
+def process_answer(answer, business_code):
+    if answer != '':
+        answer = answer.replace('\\n', '\\\n')
+        answer = answer.replace('\\', '')
+    else:
+        answer = f'Lo siento no tengo respuesta a tu pregunta. Si deseas puedes solicitar comunicarte directamente con un {business_constants[business_code]["alias_expert"]}'
+    return answer
 
 
 def get_query_index(key_topic, business_code):
@@ -675,6 +679,18 @@ def save_message(msg_number, msg_sent, msg_received, msg_type, msg_origin, msg_a
         db.merge(user)
         db.commit()
     db.close()
+
+
+def is_workflow_unique(number_user, topic_name, type_code, business_code):
+    if type_code == 'WFU':
+        db: Session = get_db_conn(business_code)
+        petition = db.query(Petition).filter(Petition.user_number == number_user,
+                                             Petition.topic_name == topic_name,
+                                             Petition.status_code == 'COM').first()
+        db.close()
+        if petition is not None:
+            return True
+    return False
 
 
 def get_open_petition(number_user, topic_name, business_code):
