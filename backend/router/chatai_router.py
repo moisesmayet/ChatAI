@@ -519,6 +519,10 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
         else:
             answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
 
+        if 'None, es un placer.' in answer:
+            answer_split = answer.split("None, es un placer.", 1)
+            answer = answer_split[1].strip()
+
         if business_constants[business_code]["messages_translator"] and index_context != '1':
             language = get_language(query_message, answer, business_code)
             if language != 'None':
