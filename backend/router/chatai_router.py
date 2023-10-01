@@ -447,21 +447,16 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             query_index = get_query_index(key_topic, business_code)
                             answer = query_index.as_query_engine(text_qa_template=qa_template).query(query_message).response
                     else:
-                        answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
+                        transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
+                        answer = transfer['answer']
+                        agent_notify = transfer['agent_notify']
 
                     process_answer(answer, business_code)
                 else:
                     if index_context == '0':
-                        prompt = f'Responde 1 si el texto es un pedido o solicitud. Reponde 0 si el texto es una pregunta\\\nTexto: "{query_message}"'
-                        sentence = get_completion(prompt, business_code)
-                        if sentence == '1':
-                            answer = f'Ya realicé la notificación para que te atienda un {business_constants[business_code]["alias_expert"]}.\n'
-                            answer += f'En unos minutos uno de nuestros representantes te brindará asistencia.\n'
-                            answer += f'Fue un placer para mi atenderte.'
-                            agent_notify = True
-                        else:
-                            answer = get_chatcompletion(behavior, query_message, query_number, query_role,
-                                                        business_code)
+                        transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
+                        answer = transfer['answer']
+                        agent_notify = transfer['agent_notify']
                     else:
                         reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                                business_code)
@@ -536,6 +531,20 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
     except Exception as e:
         save_bug(business_code, str(e), 'whatsapp')
         return {'answer': '', 'send_answer': False, 'notify': False}
+
+
+def transfer_agent(behavior, query_message, query_number, query_role, business_code):
+    agent_notify = False
+    prompt = f'Responde 1 si el texto es un pedido o solicitud. Reponde 0 si el texto es una pregunta\\\nTexto: "{query_message}"'
+    sentence = get_completion(prompt, business_code)
+    if sentence == '1':
+        answer = f'Ya realicé la notificación para que te atienda un {business_constants[business_code]["alias_expert"]}.\n'
+        answer += f'En unos minutos uno de nuestros representantes te brindará asistencia.\n'
+        answer += f'Fue un placer para mi atenderte.'
+        agent_notify = True
+    else:
+        answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
+    return {'agent_notify': agent_notify, 'answer': answer}
 
 
 def process_answer(answer, business_code):
