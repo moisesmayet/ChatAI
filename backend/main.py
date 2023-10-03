@@ -14,7 +14,7 @@ from backend.router.parameter_router import parameter_app
 from backend.router.topic_router import topic_app
 from fastapi.staticfiles import StaticFiles
 
-app = FastAPI()
+app = FastAPI(docs_url=None, redoc_url=None)
 
 
 origins = ['*']
