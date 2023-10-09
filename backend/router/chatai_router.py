@@ -563,7 +563,8 @@ def transfer_agent(behavior, query_message, query_number, query_role, business_c
 def suggest_transfer_agent(query_answer, query_number, business_code):
     answer = query_answer
     send_answer = True
-    if {business_constants[business_code]["alias_expert"]} in query_answer:
+    alias_expert = business_constants[business_code]["alias_expert"]
+    if alias_expert in query_answer:
         send_text([query_answer], query_number, business_code)
         petition_request = f'¿Desea que le transfiera con un {business_constants[business_code]["alias_expert"]}?'
         workflow_values = {'TEXT': petition_request, 'TYPE': 'agent', 'TAG': '',
