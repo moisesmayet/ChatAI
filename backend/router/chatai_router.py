@@ -521,6 +521,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
         else:
             answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
 
+        answer = str(answer)
         if 'None, es un placer.' in answer:
             answer_split = answer.split("None, es un placer.", 1)
             answer = answer_split[1].strip()
