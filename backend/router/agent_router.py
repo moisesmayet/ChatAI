@@ -67,8 +67,8 @@ async def agents_new(request: Request, business_code: str):
         agent_whatsapp = form['agent_whatsapp']
 
         db: Session = get_db_conn(business_code)
-        agent_ws = db.query(Agent).filter(Agent.agent_number != agent_number,
-                                          Agent.agent_whatsapp == agent_whatsapp).first()
+        agent_ws = db.query(Agent).filter((Agent.agent_number != agent_number) &
+                                          (Agent.agent_whatsapp == agent_whatsapp)).first()
         if not agent_ws:
             agent_active = False
             agent_staff = False
@@ -125,7 +125,7 @@ async def agents_edit(request: Request, business_code: str, agent_number: str):
 
         db: Session = get_db_conn(business_code)
         agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
-        agent_ws = db.query(Agent).filter(Agent.agent_number != agent_number, Agent.agent_whatsapp == agent_whatsapp).first()
+        agent_ws = db.query(Agent).filter((Agent.agent_number != agent_number) & (Agent.agent_whatsapp == agent_whatsapp)).first()
         if not agent_ws:
             agent_active = False
             agent_staff = False

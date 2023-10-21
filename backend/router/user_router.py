@@ -45,7 +45,7 @@ def users_view(request: Request, business_code: str, user_number: str):
 def users_messages(request: Request, business_code: str, user_number: str):
     db: Session = get_db_conn(business_code)
     user = db.query(User).filter(User.user_number == user_number).first()
-    last_message = db.query(Message).filter(Message.user_number == user_number, Message.msg_received != '').order_by(Message.id.desc()).first()
+    last_message = db.query(Message).filter((Message.user_number == user_number) & (Message.msg_received != '')).order_by(Message.id.desc()).first()
     if last_message is not None:
         user.user_lastmsg = last_message.id
         db.merge(user)
@@ -83,7 +83,7 @@ async def users_edit(request: Request, business_code: str, user_number: str):
 
         db: Session = get_db_conn(business_code)
         user = db.query(User).filter(User.user_number == user_number).first()
-        user_ws = db.query(User).filter(User.user_number != user_number, User.user_whatsapp == user_whatsapp).first()
+        user_ws = db.query(User).filter((User.user_number != user_number) & (User.user_whatsapp == user_whatsapp)).first()
         if not user_ws:
             user.user_name = form['user_name']
             user.user_whatsapp = user_whatsapp
@@ -143,9 +143,9 @@ async def users_report(request: Request, business_code: str, user_number: str):
 
             db: Session = get_db_conn(business_code)
             if user_number != '0':
-                messages = db.query(Message).filter(Message.user_number == user_number, Message.msg_date >= date_from, Message.msg_date <= date_to).all()
+                messages = db.query(Message).filter((Message.user_number == user_number) & (Message.msg_date >= date_from) & (Message.msg_date <= date_to)).all()
             else:
-                messages = db.query(Message).filter(Message.msg_date >= date_from, Message.msg_date <= date_to).order_by(Message.user_number.asc()).all()
+                messages = db.query(Message).filter((Message.msg_date >= date_from) & (Message.msg_date <= date_to)).order_by(Message.user_number.asc()).all()
             db.close()
 
             data = []
@@ -211,9 +211,10 @@ def refresh_chat(user_number: str, business_code: str):
     user = db.query(User).filter(User.user_number == user_number).first()
     if user:
         last_message = db.query(Message).filter(
-            Message.user_number == user_number,
-            Message.msg_sent != '', Message.msg_received != '',
-            Message.id > user.user_lastmsg
+            (Message.user_number == user_number) &
+            (Message.msg_sent != '') &
+            (Message.msg_received != '') &
+            (Message.id > user.user_lastmsg)
         ).order_by(Message.id.asc()).first()
 
         if last_message:

@@ -681,7 +681,7 @@ def get_order(number_user, business_code):
     # Ejecutamos la consulta para encontrar una orden
     db: Session = get_db_conn(business_code)
 
-    order = db.query(Order).filter(Order.user_number == number_user, Order.status_code == 'CRE').order_by(
+    order = db.query(Order).filter((Order.user_number == number_user) & (Order.status_code == 'CRE')).order_by(
         Order.order_start.desc()).first()
 
     # Cerramos la conexión y el cursor
@@ -716,8 +716,8 @@ def save_message(msg_number, msg_sent, msg_received, msg_type, msg_origin, msg_a
     db.commit()
 
     if msg_agent is None:
-        last_message = db.query(Message).filter(Message.user_number == msg_number,
-                                                Message.msg_received != '').order_by(
+        last_message = db.query(Message).filter((Message.user_number == msg_number) &
+                                                (Message.msg_received != '')).order_by(
             Message.id.desc()).first()
         user = db.query(User).filter(User.user_number == msg_number).first()
         user.user_lastmsg = last_message.id
@@ -729,9 +729,9 @@ def save_message(msg_number, msg_sent, msg_received, msg_type, msg_origin, msg_a
 def is_workflow_unique(number_user, topic_name, type_code, business_code):
     if type_code == 'WFU':
         db: Session = get_db_conn(business_code)
-        petition = db.query(Petition).filter(Petition.user_number == number_user,
-                                             Petition.topic_name == topic_name,
-                                             Petition.status_code == 'COM').first()
+        petition = db.query(Petition).filter((Petition.user_number == number_user) &
+                                             (Petition.topic_name == topic_name) &
+                                             (Petition.status_code == 'COM')).first()
         db.close()
         if petition is not None:
             return True
@@ -740,9 +740,9 @@ def is_workflow_unique(number_user, topic_name, type_code, business_code):
 
 def get_open_petition(number_user, topic_name, business_code):
     db: Session = get_db_conn(business_code)
-    petition = db.query(Petition).filter(Petition.user_number == number_user,
-                                         Petition.topic_name == topic_name,
-                                         Petition.status_code == 'CRE').first()
+    petition = db.query(Petition).filter((Petition.user_number == number_user) &
+                                         (Petition.topic_name == topic_name) &
+                                          (Petition.status_code == 'CRE')).first()
     if petition is not None:
         if petition.petition_steptype.startswith('finish'):
             petition.status_code = 'COM'
@@ -782,8 +782,8 @@ def save_petition(number_user, topic_name, petition_step, petition_steptype, sta
                   business_code):
     # Ejecutamos la consulta para insertar un nueva orden
     db: Session = get_db_conn(business_code)
-    petition = db.query(Petition).filter(Petition.user_number == number_user, Petition.topic_name == topic_name,
-                                         Petition.status_code == 'CRE').first()
+    petition = db.query(Petition).filter((Petition.user_number == number_user) & (Petition.topic_name == topic_name) &
+                                         (Petition.status_code == 'CRE')).first()
     if petition is not None:
         current_datetime = datetime.now()
         # Calcular la diferencia entre las fechas
@@ -1024,9 +1024,9 @@ def create_user(user_number, user_whatsapp, user_name, business_code):
                 db.commit()
         else:
             whatsapp = user.user_whatsapp
-            user_ws = db.query(User).filter(User.user_number == whatsapp, User.user_whatsapp == whatsapp).first()
+            user_ws = db.query(User).filter((User.user_number == whatsapp) & (User.user_whatsapp == whatsapp)).first()
             if user_ws:
-                other_user = db.query(User).filter(User.user_number != whatsapp, User.user_whatsapp == whatsapp).first()
+                other_user = db.query(User).filter((User.user_number != whatsapp) & (User.user_whatsapp == whatsapp)).first()
                 if other_user:
                     user_number = other_user.user_number
                     messages = db.query(Message).filter(Message.user_number == whatsapp).all()
@@ -1054,8 +1054,8 @@ def create_user(user_number, user_whatsapp, user_name, business_code):
         # Verificar si ya existia un usuario diferente con ese whatsapp
         user_ws = None
         if user_whatsapp != '':
-            user_ws = db.query(User).filter(User.user_number != user_number,
-                                            User.user_whatsapp == user_whatsapp).first()
+            user_ws = db.query(User).filter((User.user_number != user_number) &
+                                            (User.user_whatsapp == user_whatsapp)).first()
             if user_ws:
                 user_number = user_ws.user_number
                 if user_ws.user_name == '':
@@ -1108,8 +1108,7 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db: Session = get_db_conn(business_code)
 
     # Se busca un agente que este dispoible y lleve mas tiempo libre
-    agent = db.query(Agent).filter(Agent.agent_active.is_(True) and Agent.agent_staff.is_(True)).order_by(
-        Agent.agent_lastcall.asc()).first()
+    agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_staff.is_(True)).order_by(Agent.agent_lastcall.asc()).first()
     if agent:
         agent_number = agent.agent_number
         agent_whatsapp = agent.agent_whatsapp
@@ -1580,8 +1579,8 @@ def get_petition_workflow(user_number, business_code):
     if user is not None:
         last_message = db.query(Message).filter(Message.id == user.user_lastmsg).first()
         if last_message is not None:
-            petition = db.query(Petition).filter(Petition.petition_number == last_message.petition_number,
-                                                 Petition.status_code == 'CRE').first()
+            petition = db.query(Petition).filter((Petition.petition_number == last_message.petition_number) &
+                                                 (Petition.status_code == 'CRE')).first()
     db.close()
 
     return petition
@@ -1625,7 +1624,7 @@ def download_media(business_code, user_whatsapp, media_data, media_type, idwa):
 def answering_name(business_code, user_number, index_default):
     db: Session = get_db_conn(business_code)
     user = db.query(User).filter(User.user_number == user_number).first()
-    last_message = db.query(Message).filter(Message.id == user.user_lastmsg, Message.msg_type == 'name').first()
+    last_message = db.query(Message).filter((Message.id == user.user_lastmsg) & (Message.msg_type == 'name')).first()
     db.close()
 
     if last_message is not None:
