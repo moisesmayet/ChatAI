@@ -652,17 +652,31 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
                 messages.append({"role": "user", "content": query.query_sent})
                 messages.append({"role": "assistant", "content": query.query_received})
         db.close()
-    messages.append({"role": "user", "content": question})
+        messages.append({"role": "user", "content": question})
 
-    response = openai.ChatCompletion.create(
-        model=business_constants[business_code]["openai_model"],
-        messages=messages,
-        temperature=0.3,
-        n=1,
-        stop=None
-    )
-
-    return response.choices[0].message.content.strip()
+        response = openai.ChatCompletion.create(
+            model=business_constants[business_code]["openai_model"],
+            messages=messages,
+            temperature=0.3,
+            n=1,
+            stop=None
+        )
+        return response.choices[0].message.content.strip()
+    else:
+        prompt = f'Responde 1 si el siguiente texto es un saludo\\\nTexto: "{question}"'
+        response = get_completion(prompt, business_code)
+        if response == '1':
+            messages.append({"role": "user", "content": question})
+            response = openai.ChatCompletion.create(
+                model=business_constants[business_code]["openai_model"],
+                messages=messages,
+                temperature=0.3,
+                n=1,
+                stop=None
+            )
+            return response.choices[0].message.content.strip()
+        else:
+            return f'Hola, lo siento pero no comprendo lo que deseas decirme, intenta preguntarme de otra forma. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
 
 
 def get_completion(prompt, business_code):
