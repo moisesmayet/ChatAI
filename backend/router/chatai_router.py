@@ -453,9 +453,12 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             query_index = get_query_index(key_topic, business_code)
                             answer = query_index.as_query_engine(text_qa_template=qa_template).query(query_message).response
                     else:
-                        transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
-                        answer = transfer['answer']
-                        agent_notify = transfer['agent_notify']
+                        if topic.type_code == 'WFU':
+                            answer = f'Ya realizaste este proceso. Si deseas puedes solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
+                        else:
+                            transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
+                            answer = transfer['answer']
+                            agent_notify = transfer['agent_notify']
 
                     process_answer(answer, business_code)
                 else:
@@ -663,7 +666,7 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
         )
         return response.choices[0].message.content.strip()
     else:
-        prompt = f'Responde 1 si el siguiente texto es un saludo\\\nTexto: "{question}"'
+        prompt = f'Responde 1 si el siguiente texto es un saludo o un agradecimiento\\\nTexto: "{question}"'
         response = get_completion(prompt, business_code)
         if response == '1':
             messages.append({"role": "user", "content": question})
