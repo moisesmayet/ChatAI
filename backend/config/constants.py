@@ -18,7 +18,6 @@ def get_language(language_code, business_code):
     with open(lang_file, 'r', encoding='utf8') as file:
         lang = json.load(file)
 
-    lang.update({'alias_business': business_constants[business_code]['alias_business']})
     if language_code == 'es-Español':
         lang.update({'language_name': 'en-English'})
         lang.update({'language_code': 'EN'})
@@ -326,15 +325,11 @@ for business in business_enables:
 
     db.close()
 
-    business_constants[business.business_code] = {'openai_api_key': openai_api_key,
-                                                  'algorithm_hash': algorithm_hash,
+    business_constants[business.business_code] = {'openai_api_key': openai_api_key, 'algorithm_hash': algorithm_hash,
                                                   'openai_model': openai_model,
-                                                  'openai_engine': openai_engine,
-                                                  'server_url': server_url,
-                                                  'server_key': server_key,
-                                                  'lang_code': lang_code,
-                                                  'whatsapp_id': whatsapp_id,
-                                                  'whatsapp_url': whatsapp_url,
+                                                  'openai_engine': openai_engine, 'server_url': server_url,
+                                                  'server_key': server_key, 'lang_code': lang_code,
+                                                  'whatsapp_id': whatsapp_id, 'whatsapp_url': whatsapp_url,
                                                   'whatsapp_token': whatsapp_token,
                                                   'messages_translator': messages_translator,
                                                   'messages_lang': messages_lang,
@@ -342,23 +337,14 @@ for business in business_enables:
                                                   'messages_wait': messages_wait,
                                                   'messages_old': messages_old,
                                                   'transcribe_api': transcribe_api,
-                                                  'transcribe_format': transcribe_format,
-                                                  'alias_user': alias_user,
-                                                  'alias_expert': alias_expert,
-                                                  'alias_order': alias_order,
+                                                  'transcribe_format': transcribe_format, 'alias_user': alias_user,
+                                                  'alias_expert': alias_expert, 'alias_order': alias_order,
                                                   'alias_item': alias_item,
-                                                  'topic_workflows': topic_workflows,
-                                                  'topic_catalogs': topic_catalogs,
-                                                  'topic_context': topic_context,
-                                                  'topic_list': topic_list,
-                                                  'topic_index': topic_index,
-                                                  'side_menu': side_menu,
-                                                  'behavior_user': behavior_user,
-                                                  'behavior_agent': behavior_agent,
-                                                  'messages_historical': messages_historical,
-                                                  'alias_ai': alias_ai,
-                                                  'alias_business': alias_business,
-                                                  'index_persist_dir': index_persist_dir,
-                                                  'prompt_dir': prompt_dir,
+                                                  'topic_workflows': topic_workflows, 'topic_catalogs': topic_catalogs,
+                                                  'topic_context': topic_context, 'topic_list': topic_list,
+                                                  'topic_index': topic_index, 'side_menu': side_menu,
+                                                  'behavior_user': behavior_user, 'behavior_agent': behavior_agent,
+                                                  'messages_historical': messages_historical, 'alias_ai': alias_ai,
+                                                  'index_persist_dir': index_persist_dir, 'prompt_dir': prompt_dir,
                                                   'media_url': media_url
                                                   }
