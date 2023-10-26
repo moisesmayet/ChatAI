@@ -9,9 +9,10 @@ chatBodyContainer.scrollTop = chatBodyContainer.scrollHeight;
 function loadUpdatedContent() {
     // Obtiene el user_number del elemento HTML correspondiente
     const userNumber = document.getElementById('chat_number').value;
+    const businessCode = document.getElementById('chat_business').value;
 
-    // Realiza una llamada AJAX para obtener los datos actualizados con el parámetro user_number
-    fetch('/refresh_chat?user_number='+userNumber)
+    // Realiza una llamada AJAX para obtener los datos actualizados con el parámetro user_number y business_code
+    fetch(`/${businessCode}/${userNumber}/refresh_chat`)
         .then(response => response.json())
         .then(data => {
             // Actualiza el contenido en el contenedor

@@ -45,7 +45,7 @@ def users_view(request: Request, business_code: str, user_number: str):
 def users_messages(request: Request, business_code: str, user_number: str):
     db: Session = get_db_conn(business_code)
     user = db.query(User).filter(User.user_number == user_number).first()
-    last_message = db.query(Message).filter((Message.user_number == user_number) & (Message.msg_received != '')).order_by(Message.id.desc()).first()
+    last_message = db.query(Message).filter(Message.user_number == user_number).order_by(Message.id.desc()).first()
     if last_message is not None:
         user.user_lastmsg = last_message.id
         db.merge(user)
@@ -203,8 +203,8 @@ async def send_chat(request: Request, business_code: str):
         return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
 
 
-@user_app.get('/{business_code}/refresh_chat')
-def refresh_chat(user_number: str, business_code: str):
+@user_app.get('/{business_code}/{user_number}/refresh_chat')
+def refresh_chat(business_code: str, user_number: str):
     content = [{'div_message': '', 'div_class': ''}]
     db: Session = get_db_conn(business_code)
 
@@ -213,7 +213,7 @@ def refresh_chat(user_number: str, business_code: str):
         last_message = db.query(Message).filter(
             (Message.user_number == user_number) &
             (Message.msg_sent != '') &
-            (Message.msg_received != '') &
+            (Message.msg_received == '') &
             (Message.id > user.user_lastmsg)
         ).order_by(Message.id.asc()).first()
 

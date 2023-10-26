@@ -186,8 +186,8 @@ async def agents_password(request: Request, business_code: str, agent_number: st
         form = await request.form()
         form = {field: form[field] for field in form}
 
-        password1 = form['admin_password1']
-        password2 = form['admin_password2']
+        password1 = form['password1']
+        password2 = form['password2']
 
         db: Session = get_db_conn(business_code)
         agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
