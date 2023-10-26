@@ -9,7 +9,7 @@ def get_data_conn():
     host = '127.0.0.1'
     port = 5432
     user = 'postgres'
-    password = 'gvDT332dchGBK'  # 'postgresuapa'
+    password = 'postgresuapa'
     return {'host': host, 'port': port, 'user': user, 'password': password}
 
 
@@ -68,7 +68,7 @@ def match_business_code_local(business_code):
         return False
 
 
-business_code_local = 'MC0D35D3VCH4T4180100420645CUB4'
+business_code_local = 'mc0d35d3vch4t4180100420645cub4'
 business_session_local = get_session_local(business_code_local)
 business = load_business(business_session_local)
 business_sessions = {}
