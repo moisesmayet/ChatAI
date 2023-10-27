@@ -206,6 +206,8 @@ for business in business_enables:
     whatsapp_url = parameter.parameter_value
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'whatsapp_token').first()
     whatsapp_token = parameter.parameter_value
+    parameter = db.query(Parameter).filter(Parameter.parameter_name == 'whatsapp_number').first()
+    whatsapp_number = parameter.parameter_value
 
     # Modificar textos(audios y traducciones)
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'messages_wait').first()
@@ -336,6 +338,7 @@ for business in business_enables:
                                                   'whatsapp_id': whatsapp_id,
                                                   'whatsapp_url': whatsapp_url,
                                                   'whatsapp_token': whatsapp_token,
+                                                  'whatsapp_number': whatsapp_number,
                                                   'messages_translator': messages_translator,
                                                   'messages_lang': messages_lang,
                                                   'messages_voice': messages_voice,

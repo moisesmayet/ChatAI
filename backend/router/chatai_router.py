@@ -427,8 +427,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                 answer = workflow['text']
                                 send_answer = False
                             else:
-                                answer = f'Para ayudarle mejor con esta solicitud, le recomendamos escribir al WhatsApp'
-                            return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify}
+                                answer = f'Para ayudarte mejor con esta solicitud, te recomendamos escribir a nuestro Whatsapp {business_constants[business_code]["whatsapp_number"]}'
+                            return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify, 'check_transfer_agent': check_transfer_agent}
                         else:
                             if is_catalog(business_code, key_topic):
                                 if query_origin == 'whatsapp':
@@ -437,13 +437,13 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                     send_json(query_number, payload, business_code)
                                     answer = f'Con gusto aquí le mostramos nuestro catálogo'
                                 else:
-                                    answer = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al WhatsApp para enviarle nuestro catálogo'
-                                return {'answer': answer, 'send_answer': True, 'notify': agent_notify}
+                                    answer = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al nuestro Whatsapp  {business_constants[business_code]["whatsapp_number"]} para enviarte nuestro catálogo'
+                                return {'answer': answer, 'send_answer': True, 'notify': agent_notify, 'check_transfer_agent': check_transfer_agent}
                             else:
                                 reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                                        business_code)
                                 if reply:
-                                    return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
+                                    return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False, 'check_transfer_agent': check_transfer_agent}
 
                         if answer == '':
                             behavior += f'Basándote en la siguiente información de contexto.\\\n{{context_str}}\\\n'
@@ -470,7 +470,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                         reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                                business_code)
                         if reply:
-                            return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
+                            return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False, 'check_transfer_agent': check_transfer_agent}
 
                         user_name = get_completion(
                             f'''Extrae el nombre de la persona del texto y si no hay nombre contesta "None": {query_message}''',
@@ -517,7 +517,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                     reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                            business_code)
                     if reply:
-                        return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False}
+                        return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False, 'check_transfer_agent': check_transfer_agent}
                     answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
 
                 process_answer(answer, business_code)
@@ -541,7 +541,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
         return {'answer': answer, 'send_answer': True, 'notify': agent_notify, 'check_transfer_agent': check_transfer_agent}
     except Exception as e:
         save_bug(business_code, str(e), 'whatsapp')
-        return {'answer': '', 'send_answer': False, 'notify': False}
+        return {'answer': '', 'send_answer': False, 'notify': False, 'check_transfer_agent': False}
 
 
 def answer_transfer_agent(business_code):
