@@ -341,8 +341,10 @@ def reply_message(message, message_type, number_user, usuario, agent, user_compl
                                                   Message.msg_date >= current_date).first()
 
             if exists_msg is None and not user_completed:
-                answers.append(
-                    f'Mi nombre es {business_constants[business_code]["alias_ai"]} y estaré aquí para cualquier información que necesites. Me gustaría saber como te llamas.')
+                greetings = f'Mi nombre es {business_constants[business_code]["alias_ai"]} y estaré aquí para cualquier información que necesites.'
+                if origin != 'web':
+                    greetings += ' Me gustaría saber como te llamas.'
+                answers.append(greetings)
                 message_type = 'name'
 
             answers_str = ' '.join(answers)
