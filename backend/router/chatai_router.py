@@ -477,7 +477,9 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                         user_name = get_completion(
                             f'''Extrae el nombre de la persona del texto y si no hay nombre contesta "None": {query_message}''',
                             business_code)
-                        if user_name != 'None':
+                        if user_name.endswith('.'):
+                            user_name = user_name[:-1]
+                        if user_name != 'None' and re.match('^[A-Za-z][a-z]+( [A-Za-z][a-z]+)?$', user_name, re.IGNORECASE):
                             update_user(query_number, user_name, business_code)
                             answer = f'{user_name}, es un placer. ¿En qué puedo ayudarte?'
                         else:
