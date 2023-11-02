@@ -122,6 +122,10 @@ async def webhook_whatsapp(request: Request, business_code: str):
                             os.environ['OPENAI_API_KEY'] = openai_api_key
                             openai.api_key = openai_api_key
 
+                            user_response = create_user(user_whatsapp, user_whatsapp,
+                                                        business_constants[business_code]["alias_user"],
+                                                        business_code)
+
                             if message_type == 'text':
                                 # Obtener el texto del mensaje
                                 message = message_data[0]['text']['body'].strip()
@@ -240,9 +244,6 @@ async def webhook_whatsapp(request: Request, business_code: str):
 
                             # Revisar que haya mensaje
                             if len(message):
-                                user_response = create_user(user_whatsapp, user_whatsapp,
-                                                            business_constants[business_code]["alias_user"],
-                                                            business_code)
                                 if not reply:
                                     reply = reply_message(message, message_type, user_response['number'],
                                                           user_response['usuario'], agent,
