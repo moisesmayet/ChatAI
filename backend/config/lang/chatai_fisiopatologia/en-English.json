@@ -23,6 +23,7 @@
     "name": "Name",
     "description": "Description",
     "lastcall": "Last Call",
+    "lastdate": "Last message",
     "Active": "Active",
     "value": "Value",
     "code": "Code",

@@ -16,6 +16,7 @@
             <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.user }}</th>
             <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">{{ language.name }}</th>
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Whatsapp</th>
+            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.lastdate }}</th>
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
             {% if permission == 'super' %}
@@ -59,6 +60,12 @@
               <td>
                 <div class="text-center avatar-group mt-2">
                   <span class="text-xs font-weight-bold"> {{ item.user_whatsapp }} </span>
+                </div>
+              </td>
+
+              <td>
+                <div class="text-center avatar-group mt-2">
+                  <span class="text-xs font-weight-bold"> {{ item.user_lastdate }} </span>
                 </div>
               </td>
 

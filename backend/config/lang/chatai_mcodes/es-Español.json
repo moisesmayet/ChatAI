@@ -24,6 +24,7 @@
     "name": "Nombre",
     "description": "Descripci\u00f3n",
     "lastcall": "\u00daltima Llamada",
+    "lastdate": "\u00daltimo mensaje",
     "active": "Activo",
     "value": "Valor",
     "code": "C\u00f3digo",
