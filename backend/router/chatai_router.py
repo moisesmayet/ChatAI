@@ -209,13 +209,33 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                             button = message_data[0]['interactive']['button_reply']
                                             message = button['title']
                                             button_id = str(button['id'])
-                                            button_id = button_id.replace(']', '')
-                                            button_id = button_id.split('[')
+                                            button_id = button_id.split('][')
                                             topic_name = button_id[0]
-                                            petition_step = format_step(button_id[1])
-                                            reply = send_interactive(user_whatsapp, message, '', message_type, agent,
-                                                                     topic_name,
-                                                                     petition_step, False, business_code)
+                                            topic_name = topic_name.replace('[', '')
+                                            petition_number = button_id[1]
+                                            petition_step = button_id[2].replace(']', '')
+                                            petition_step = format_step(petition_step)
+                                            petition = db.query(Petition).filter((Petition.user_number == user_whatsapp) &
+                                                                                 (Petition.topic_name == topic_name) &
+                                                                                 (Petition.status_code == 'CRE')).order_by(
+                                                Petition.petition_date.desc()).first()
+                                            if (petition and petition.petition_number == petition_number) or (
+                                                    petition_number == 'None' and petition_step != 'cancel'):
+                                                if petition:
+                                                    petition_number = petition.petition_number
+                                                reply = send_interactive(user_whatsapp, message, '', message_type,
+                                                                         agent, petition_number,
+                                                                         topic_name,
+                                                                         petition_step, False, business_code)
+                                            else:
+                                                if petition_step == 'cancel':
+                                                    answers = f'Si desea algo más, con gusto le ayudaré'
+                                                else:
+                                                    answers = f'Ya realizaste este proceso. Si deseas puedes solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
+                                                send_text([answers], user_whatsapp, business_code)
+                                                save_message(user_whatsapp, '', answers, message_type, 'whatsapp',
+                                                             agent, None, business_code)
+                                                return JSONResponse({'status': 'success'}, status_code=200)
                                         else:
                                             if message_type == 'audio' or \
                                                     message_type == 'image' or \
@@ -335,7 +355,7 @@ def reply_message(message, message_type, number_user, usuario, agent, user_compl
                 if not suggest_transfer['send_answer']:
                     answers.append(suggest_transfer['answer'])
                     send_answer = False
-                
+
             # Verificar si tiene mensajes hoy
             current_date = datetime.now().date()
             exists_msg = db.query(Message).filter(Message.user_number == number_user,
@@ -409,7 +429,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                 petition = get_open_petition(query_number, key_topic, business_code)
 
                                 if petition is None:
-                                    workflow = get_workflow(business_code, key_topic, '', 'interactive', False)
+                                    workflow = get_workflow(business_code, 'None', key_topic, '', 'interactive', False)
                                 else:
                                     if petition.petition_steptype != 'confirm':
                                         petition_step = petition.petition_step
@@ -423,7 +443,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                                        'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
                                                        'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
                                                        'BUTTON3': 'nan', 'GOTOID3': 'nan'}
-                                    workflow = create_workflow(business_code, key_topic, petition_step, workflow_values,
+                                    workflow = create_workflow(business_code, petition.petition_number, key_topic,
+                                                               petition_step, workflow_values,
                                                                True)
                                 payload = json_button(workflow)
                                 send_json(query_number, payload, business_code)
@@ -431,7 +452,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                 send_answer = False
                             else:
                                 answer = f'Para ayudarte mejor con esta solicitud, te recomendamos escribir a nuestro Whatsapp {business_constants[business_code]["whatsapp_number"]}'
-                            return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify, 'check_transfer_agent': check_transfer_agent}
+                            return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify,
+                                    'check_transfer_agent': check_transfer_agent}
                         else:
                             if is_catalog(business_code, key_topic):
                                 if query_origin == 'whatsapp':
@@ -441,12 +463,15 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                     answer = f'Con gusto aquí le mostramos nuestro catálogo'
                                 else:
                                     answer = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al nuestro Whatsapp  {business_constants[business_code]["whatsapp_number"]} para enviarte nuestro catálogo'
-                                return {'answer': answer, 'send_answer': True, 'notify': agent_notify, 'check_transfer_agent': check_transfer_agent}
+                                return {'answer': answer, 'send_answer': True, 'notify': agent_notify,
+                                        'check_transfer_agent': check_transfer_agent}
                             else:
-                                reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
+                                reply = get_reply_info(query_message, query_number, query_origin, query_type,
+                                                       query_agent,
                                                        business_code)
                                 if reply:
-                                    return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False, 'check_transfer_agent': check_transfer_agent}
+                                    return {'answer': reply['answers'][0], 'send_answer': reply['respond'],
+                                            'notify': False, 'check_transfer_agent': check_transfer_agent}
 
                         if answer == '':
                             behavior += f'Basándote en la siguiente información de contexto.\\\n{{context_str}}\\\n'
@@ -454,7 +479,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             qa_template = Prompt(behavior)
 
                             query_index = get_query_index(key_topic, business_code)
-                            answer = query_index.as_query_engine(text_qa_template=qa_template).query(query_message).response
+                            answer = query_index.as_query_engine(text_qa_template=qa_template).query(
+                                query_message).response
                     else:
                         if topic.type_code == 'WFU':
                             answer = f'Ya realizaste este proceso. Si deseas puedes solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
@@ -473,14 +499,16 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                         reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                                business_code)
                         if reply:
-                            return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False, 'check_transfer_agent': check_transfer_agent}
+                            return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
+                                    'check_transfer_agent': check_transfer_agent}
 
                         user_name = get_completion(
                             f'''Extrae el nombre de la persona del texto y si no hay nombre contesta "None": {query_message}''',
                             business_code)
                         if user_name.endswith('.'):
                             user_name = user_name[:-1]
-                        if user_name != 'None' and re.match('^[A-Za-z][a-z]+( [A-Za-z][a-z]+)?$', user_name, re.IGNORECASE):
+                        if user_name != 'None' and re.match('^[A-Za-z][a-z]+( [A-Za-z][a-z]+)?$', user_name,
+                                                            re.IGNORECASE):
                             update_user(query_number, user_name, business_code)
                             answer = f'{user_name}, es un placer. ¿En qué puedo ayudarte?'
                         else:
@@ -522,7 +550,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                     reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                            business_code)
                     if reply:
-                        return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False, 'check_transfer_agent': check_transfer_agent}
+                        return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
+                                'check_transfer_agent': check_transfer_agent}
                     answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
 
                 process_answer(answer, business_code)
@@ -543,7 +572,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                 answer = re.findall(r'"([^"]*)"', answer)
                 answer = answer[0]
 
-        return {'answer': answer, 'send_answer': True, 'notify': agent_notify, 'check_transfer_agent': check_transfer_agent}
+        return {'answer': answer, 'send_answer': True, 'notify': agent_notify,
+                'check_transfer_agent': check_transfer_agent}
     except Exception as e:
         save_bug(business_code, str(e), 'whatsapp')
         return {'answer': '', 'send_answer': False, 'notify': False, 'check_transfer_agent': False}
@@ -579,7 +609,7 @@ def suggest_transfer_agent(query_answer, query_number, business_code):
                            'BUTTON1': f'Sí', 'GOTOID1': 'agent',
                            'BUTTON2': 'nan', 'GOTOID2': 'nan',
                            'BUTTON3': 'nan', 'GOTOID3': 'nan'}
-        workflow = create_workflow(business_code, 'agent', '', workflow_values, True)
+        workflow = create_workflow(business_code, 'None', 'agent', '', workflow_values, True)
         payload = json_button(workflow)
         send_json(query_number, payload, business_code)
         answer = workflow['text']
@@ -764,7 +794,8 @@ def get_open_petition(number_user, topic_name, business_code):
     db: Session = get_db_conn(business_code)
     petition = db.query(Petition).filter((Petition.user_number == number_user) &
                                          (Petition.topic_name == topic_name) &
-                                          (Petition.status_code == 'CRE')).first()
+                                         (Petition.status_code == 'CRE')).order_by(
+        Petition.petition_date.desc()).first()
     if petition is not None:
         if petition.petition_steptype.startswith('finish'):
             petition.status_code = 'COM'
@@ -805,7 +836,8 @@ def save_petition(number_user, topic_name, petition_step, petition_steptype, sta
     # Ejecutamos la consulta para insertar un nueva orden
     db: Session = get_db_conn(business_code)
     petition = db.query(Petition).filter((Petition.user_number == number_user) & (Petition.topic_name == topic_name) &
-                                         (Petition.status_code == 'CRE')).first()
+                                         (Petition.status_code == 'CRE')).order_by(
+        Petition.petition_date.desc()).first()
     if petition is not None:
         current_datetime = datetime.now()
         # Calcular la diferencia entre las fechas
@@ -1048,7 +1080,8 @@ def create_user(user_number, user_whatsapp, user_name, business_code):
             whatsapp = user.user_whatsapp
             user_ws = db.query(User).filter((User.user_number == whatsapp) & (User.user_whatsapp == whatsapp)).first()
             if user_ws:
-                other_user = db.query(User).filter((User.user_number != whatsapp) & (User.user_whatsapp == whatsapp)).first()
+                other_user = db.query(User).filter(
+                    (User.user_number != whatsapp) & (User.user_whatsapp == whatsapp)).first()
                 if other_user:
                     user_number = other_user.user_number
                     messages = db.query(Message).filter(Message.user_number == whatsapp).all()
@@ -1130,7 +1163,8 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db: Session = get_db_conn(business_code)
 
     # Se busca un agente que este dispoible y lleve mas tiempo libre
-    agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_staff.is_(True)).order_by(Agent.agent_lastcall.asc()).first()
+    agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_staff.is_(True)).order_by(
+        Agent.agent_lastcall.asc()).first()
     if agent:
         agent_number = agent.agent_number
         agent_whatsapp = agent.agent_whatsapp
@@ -1218,7 +1252,8 @@ def send_voice(answers, numberwa, agent, filename, business_code):
     mensajewa.send_audio(audio=audio_url, recipient_id=numberwa)
 
 
-def send_interactive(user_whatsapp, received, answered, message_type, agent, topic_name, petition_step, verify_data,
+def send_interactive(user_whatsapp, received, answered, message_type, agent, message_petition, topic_name,
+                     petition_step, verify_data,
                      business_code):
     agent_notify = False
     petition_request = ''
@@ -1226,7 +1261,14 @@ def send_interactive(user_whatsapp, received, answered, message_type, agent, top
     answers = []
     if petition_step != 'agent':
         if petition_step != 'cancel':
-            workflow = get_workflow(business_code, topic_name, petition_step, message_type, verify_data)
+            if message_petition != 'None':
+                petition_number = message_petition
+            else:
+                petition_number = save_petition(user_whatsapp, topic_name, 1, petition_steptype,
+                                                None, petition_request, business_code)
+
+            workflow = get_workflow(business_code, petition_number, topic_name, petition_step, message_type,
+                                    verify_data)
             if workflow['process_petition']:
                 petition_step = workflow['step']
                 petition_steptype = workflow['type']
@@ -1242,6 +1284,7 @@ def send_interactive(user_whatsapp, received, answered, message_type, agent, top
 
                     petition_number = save_petition(user_whatsapp, topic_name, petition_step, petition_steptype,
                                                     None, petition_request, business_code)
+
                     payload = json_button(workflow)
                     send_json(user_whatsapp, payload, business_code)
                 else:
@@ -1294,7 +1337,7 @@ def send_json(numberwa, jsonwa, business_code):
     mensajewa.send_custom_json(recipient_id=numberwa, data=jsonwa)
 
 
-def create_workflow(business_code, workflow_name, workflow_step, workflow_values, workflow_process):
+def create_workflow(business_code, petition_number, workflow_name, workflow_step, workflow_values, workflow_process):
     db: Session = get_db_conn(business_code)
     topic = db.query(Topic).filter(Topic.topic_name == workflow_name).first()
     db.close()
@@ -1310,7 +1353,7 @@ def create_workflow(business_code, workflow_name, workflow_step, workflow_values
         button = {
             "type": "reply",
             "reply": {
-                "id": f'{workflow_name}[{workflow_values["GOTOID1"].strip()}]',
+                "id": f'[{workflow_name}][{petition_number}][{workflow_values["GOTOID1"].strip()}]',
                 "title": workflow_values["BUTTON1"].strip()
             }
         }
@@ -1320,7 +1363,7 @@ def create_workflow(business_code, workflow_name, workflow_step, workflow_values
             button = {
                 "type": "reply",
                 "reply": {
-                    "id": f'{workflow_name}[{workflow_values["GOTOID2"].strip()}]',
+                    "id": f'[{workflow_name}][{petition_number}][{workflow_values["GOTOID2"].strip()}]',
                     "title": workflow_values["BUTTON2"].strip()
                 }
             }
@@ -1330,7 +1373,7 @@ def create_workflow(business_code, workflow_name, workflow_step, workflow_values
             button = {
                 "type": "reply",
                 "reply": {
-                    "id": f'{workflow_name}[{workflow_values["GOTOID3"].strip()}]',
+                    "id": f'[{workflow_name}][{petition_number}][{workflow_values["GOTOID3"].strip()}]',
                     "title": workflow_values["BUTTON3"].strip()
                 }
             }
@@ -1343,7 +1386,7 @@ def create_workflow(business_code, workflow_name, workflow_step, workflow_values
     return workflow
 
 
-def get_workflow(business_code, workflow_name, workflow_step, workflow_type, workflow_verify):
+def get_workflow(business_code, workflow_petition, workflow_name, workflow_step, workflow_type, workflow_verify):
     excel_values = get_row_values_excel(business_code, workflow_name, {'key': 'ID', 'value': workflow_step},
                                         ['NEXTID', 'TEXT', 'TYPE', 'TAG', 'BUTTON1', 'GOTOID1', 'BUTTON2', 'GOTOID2',
                                          'BUTTON3',
@@ -1362,7 +1405,8 @@ def get_workflow(business_code, workflow_name, workflow_step, workflow_type, wor
                                              'BUTTON3',
                                              'GOTOID3'])
 
-    return create_workflow(business_code, workflow_name, workflow_step, excel_values[0], process_petition)
+    return create_workflow(business_code, workflow_petition, workflow_name, workflow_step, excel_values[0],
+                           process_petition)
 
 
 def get_catalog(business_code, catalog):
@@ -1390,7 +1434,7 @@ def get_reply_info(query_message, query_number, query_origin, query_type, query_
         petition = get_petition_workflow(query_number, business_code)
         if petition is not None:
             reply = send_interactive(query_number, query_message, '', query_type,
-                                     query_agent, petition.topic_name,
+                                     query_agent, petition.petition_number, petition.topic_name,
                                      petition.petition_step, True, business_code)
     return reply
 
@@ -1602,7 +1646,8 @@ def get_petition_workflow(user_number, business_code):
         last_message = db.query(Message).filter(Message.id == user.user_lastmsg).first()
         if last_message is not None:
             petition = db.query(Petition).filter((Petition.petition_number == last_message.petition_number) &
-                                                 (Petition.status_code == 'CRE')).first()
+                                                 (Petition.status_code == 'CRE')).order_by(
+                Petition.petition_date.desc()).first()
     db.close()
 
     return petition
