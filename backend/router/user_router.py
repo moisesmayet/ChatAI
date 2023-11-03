@@ -23,7 +23,7 @@ templates = Jinja2Templates(directory='./frontend/templates')
 @auth_required
 def users_list(request: Request, business_code: str):
     db: Session = get_db_conn(business_code)
-    users = db.query(User).order_by(User.user_name.asc()).all()
+    users = db.query(User).order_by(User.user_lastmsg.desc()).all()
     db.close()
     return templates.TemplateResponse('dashboard/users/users.html', {'request': request, 'users': users, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
 
@@ -34,7 +34,7 @@ def users_view(request: Request, business_code: str, user_number: str):
     permission = request.cookies.get('Permission')
     if permission == 'super':
         db: Session = get_db_conn(business_code)
-        users = db.query(User).order_by(User.user_name.asc()).all()
+        users = db.query(User).order_by(User.user_lastmsg.desc()).all()
         user = db.query(User).filter(User.user_number == user_number).first()
         db.close()
         return templates.TemplateResponse('dashboard/users/users_view.html', {'request': request, 'users': users, 'user': user, 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
@@ -51,7 +51,7 @@ def users_messages(request: Request, business_code: str, user_number: str):
         db.merge(user)
     db.commit()
 
-    users = db.query(User).order_by(User.user_name.asc()).all()
+    users = db.query(User).order_by(User.user_lastmsg.desc()).all()
     user_messages = db.query(Message).filter(Message.user_number == user_number).order_by(Message.id.asc()).all()
 
     db.close()
@@ -63,7 +63,7 @@ async def users_edit(request: Request, business_code: str, user_number: str):
     permission = request.cookies.get('Permission')
     if permission == 'super':
         db: Session = get_db_conn(business_code)
-        users = db.query(User).order_by(User.user_name.asc()).all()
+        users = db.query(User).order_by(User.user_lastmsg.desc()).all()
         user = db.query(User).filter(User.user_number == user_number).first()
         db.close()
         return templates.TemplateResponse('dashboard/users/users_edit.html',
@@ -95,7 +95,7 @@ async def users_edit(request: Request, business_code: str, user_number: str):
             return redirect
         else:
             msg = f'Exists other {constants.business_constants[business_code]["alias_user"]} with same whatsapp'
-            users = db.query(User).order_by(User.user_name.asc()).all()
+            users = db.query(User).order_by(User.user_lastmsg.desc()).all()
             return templates.TemplateResponse('dashboard/users/users_edit.html',
                                               {'request': request, 'users': users, 'user': user,
                                                'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code,
@@ -109,7 +109,7 @@ async def users_report(request: Request, business_code: str, user_number: str):
     permission = request.cookies.get('Permission')
     if permission == 'super':
         db: Session = get_db_conn(business_code)
-        users = db.query(User).order_by(User.user_name.asc()).all()
+        users = db.query(User).order_by(User.user_lastmsg.desc()).all()
         user = db.query(User).filter(User.user_number == user_number).first()
         db.close()
 
