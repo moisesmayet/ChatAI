@@ -48,6 +48,7 @@ def users_messages(request: Request, business_code: str, user_number: str):
     last_message = db.query(Message).filter(Message.user_number == user_number).order_by(Message.id.desc()).first()
     if last_message is not None:
         user.user_lastmsg = last_message.id
+        user.user_lastdate = datetime.now()
         db.merge(user)
     db.commit()
 
@@ -190,6 +191,7 @@ async def send_chat(request: Request, business_code: str):
         last_message = db.query(Message).filter(Message.user_number == user_number).first()
         user = db.query(User).filter(User.user_number == user_number).first()
         user.user_lastmsg = last_message.id
+        user.user_lastdate = datetime.now()
         user.user_wait = user_wait
         db.merge(user)
         db.commit()
@@ -219,6 +221,7 @@ def refresh_chat(business_code: str, user_number: str):
 
         if last_message:
             user.user_lastmsg = last_message.id
+            user.user_lastdate = datetime.now()
             db.merge(user)
             db.commit()
             content = [{'div_message': last_message.msg_sent, 'div_class': 'user-message'}]

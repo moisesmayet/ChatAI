@@ -773,6 +773,7 @@ def save_message(msg_number, msg_sent, msg_received, msg_type, msg_origin, msg_a
             Message.id.desc()).first()
         user = db.query(User).filter(User.user_number == msg_number).first()
         user.user_lastmsg = last_message.id
+        user.user_lastdate = datetime.now()
         db.merge(user)
         db.commit()
     db.close()

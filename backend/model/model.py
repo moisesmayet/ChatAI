@@ -183,6 +183,7 @@ class User(db_conn):
     user_name = Column(String(50))
     user_number = Column(String(254), primary_key=True)
     user_lastmsg = Column(Integer, default=0)
+    user_lastdate = Column(DateTime, default=datetime.utcnow)
     user_wait = Column(Boolean, default=False)
     user_whatsapp = Column(String(20), default='')
 

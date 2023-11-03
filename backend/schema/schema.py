@@ -313,6 +313,7 @@ class UserBase(BaseModel):
     user_number: str
     user_name: str
     user_lastmsg: int
+    user_lastdate: Optional[datetime]
     user_wait: bool
     user_whatsapp = str
 
