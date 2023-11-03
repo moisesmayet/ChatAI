@@ -18,7 +18,11 @@ def get_language(language_code, business_code):
     with open(lang_file, 'r', encoding='utf8') as file:
         lang = json.load(file)
 
-    lang.update({'alias_business': business_constants[business_code]['alias_business']})
+    if business_code in business_constants:
+        lang.update({'alias_business': business_constants[business_code]['alias_business']})
+    else:
+        lang.update({'alias_business': 'Admin'})
+
     if language_code == 'es-Español':
         lang.update({'language_name': 'en-English'})
         lang.update({'language_code': 'EN'})
