@@ -547,11 +547,12 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                             db.close()
 
                 if answer == '':
-                    reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
-                                           business_code)
-                    if reply:
-                        return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
-                                'check_transfer_agent': check_transfer_agent}
+                    if query_type == 'interactive':
+                        reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
+                                               business_code)
+                        if reply:
+                            return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
+                                    'check_transfer_agent': check_transfer_agent}
                     answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
 
                 process_answer(answer, business_code)
