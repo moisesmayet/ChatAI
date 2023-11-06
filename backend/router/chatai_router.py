@@ -479,8 +479,11 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             qa_template = Prompt(behavior)
 
                             query_index = get_query_index(key_topic, business_code)
-                            answer = query_index.as_query_engine(text_qa_template=qa_template).query(
-                                query_message).response
+                            if query_index is not None:
+                                answer = query_index.as_query_engine(text_qa_template=qa_template).query(
+                                    query_message).response
+                            else:
+                                answer = f'En este momento estamos atendiendo el máximo de usuarios. Si deseas puedes solicitar comunicarte directamente con un {business_constants[business_code]["alias_expert"]}'
                     else:
                         if topic.type_code == 'WFU':
                             answer = f'Ya realizaste este proceso. Si deseas puedes solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
@@ -628,24 +631,27 @@ def process_answer(answer, business_code):
 
 
 def get_query_index(key_topic, business_code):
-    topic_index = {}
-    openai_model = business_constants[business_code]['openai_model']
-    prompt_dir = business_constants[business_code]['prompt_dir']
-    index_persist_dir = business_constants[business_code]['index_persist_dir']
+    try:
+        topic_index = {}
+        openai_model = business_constants[business_code]['openai_model']
+        prompt_dir = business_constants[business_code]['prompt_dir']
+        index_persist_dir = business_constants[business_code]['index_persist_dir']
 
-    if key_topic not in topic_index:
-        directory_prompt = f'{prompt_dir}/{key_topic}'
-        directory_persist = f'{index_persist_dir}/{key_topic}'
-        # Cargar los datos del directorio "prompt" y almacenarlos en caché
-        documents = SimpleDirectoryReader(directory_prompt).load_data()
-        modelo = LLMPredictor(llm=ChatOpenAI(temperature=0.2, model_name=openai_model))
-        service_context = ServiceContext.from_defaults(llm_predictor=modelo)
-        index_storage = GPTVectorStoreIndex.from_documents(documents, service_context=service_context)
-        index_storage.storage_context.persist(persist_dir=directory_persist)
-        topic_index[key_topic] = index_storage
-        return index_storage
+        if key_topic not in topic_index:
+            directory_prompt = f'{prompt_dir}/{key_topic}'
+            directory_persist = f'{index_persist_dir}/{key_topic}'
+            # Cargar los datos del directorio "prompt" y almacenarlos en caché
+            documents = SimpleDirectoryReader(directory_prompt).load_data()
+            modelo = LLMPredictor(llm=ChatOpenAI(temperature=0.2, request_timeout=30, model_name=openai_model))
+            service_context = ServiceContext.from_defaults(llm_predictor=modelo)
+            index_storage = GPTVectorStoreIndex.from_documents(documents, service_context=service_context)
+            index_storage.storage_context.persist(persist_dir=directory_persist)
+            topic_index[key_topic] = index_storage
+            return index_storage
 
-    return topic_index[key_topic]
+        return topic_index[key_topic]
+    except Exception as e:
+        return None
 
 
 def get_index(query, options, index_default, business_code):
@@ -667,7 +673,7 @@ def get_promptcompletion(prompt, business_code):
         response = openai.ChatCompletion.create(
             model=business_constants[business_code]["openai_model"],
             messages=messages,
-            request_timeout=60,
+            request_timeout=30,
             n=1,
             temperature=0,
             stop=None
@@ -702,7 +708,7 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
             response = openai.ChatCompletion.create(
                 model=business_constants[business_code]["openai_model"],
                 messages=messages,
-                request_timeout=60,
+                request_timeout=30,
                 temperature=0.3,
                 n=1,
                 stop=None
@@ -719,7 +725,7 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
                 response = openai.ChatCompletion.create(
                     model=business_constants[business_code]["openai_model"],
                     messages=messages,
-                    request_timeout=60,
+                    request_timeout=30,
                     temperature=0.3,
                     n=1,
                     stop=None
@@ -736,7 +742,7 @@ def get_completion(prompt, business_code):
         response = openai.Completion.create(
             engine=business_constants[business_code]["openai_engine"],
             prompt=prompt,
-            request_timeout=60,
+            request_timeout=30,
             temperature=0.3,
             n=1,
             stop=None
