@@ -442,7 +442,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                     workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
                                                        'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
                                                        'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
-                                                       'BUTTON3': 'nan', 'GOTOID3': 'nan'}
+                                                       'BUTTON3': 'Cancelar', 'GOTOID3': 'cancel'}
                                     workflow = create_workflow(business_code, petition.petition_number, key_topic,
                                                                petition_step, workflow_values,
                                                                True)
