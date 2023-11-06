@@ -662,72 +662,89 @@ def get_index(query, options, index_default, business_code):
 
 
 def get_promptcompletion(prompt, business_code):
-    messages = [{'role': 'user', 'content': prompt}]
-    response = openai.ChatCompletion.create(
-        model=business_constants[business_code]["openai_model"],
-        messages=messages,
-        n=1,
-        temperature=0,
-    )
-    return response.choices[0].message['content']
+    try:
+        messages = [{'role': 'user', 'content': prompt}]
+        response = openai.ChatCompletion.create(
+            model=business_constants[business_code]["openai_model"],
+            messages=messages,
+            request_timeout=60,
+            n=1,
+            temperature=0,
+            stop=None
+        )
+        return response.choices[0].message['content']
+    except Exception as e:
+        return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
 
 
 def get_chatcompletion(behavior, question, user_number, role, business_code):
     messages = [{"role": "system", "content": behavior}]
     if business_constants[business_code]["messages_historical"] > 0:
-        db: Session = get_db_conn(business_code)
-        if role == 'user':
-            role_messages = db.query(Message).filter(Message.user_number == user_number).order_by(
-                Message.id.desc()).limit(business_constants[business_code]["messages_historical"]).all()
-            role_messages = sorted(role_messages, key=lambda x: x.id)
-            for message in role_messages:
-                messages.append({"role": "user", "content": message.msg_sent})
-                messages.append({"role": "assistant", "content": message.msg_received})
-        else:
-            role_queries = db.query(Query).filter(Query.agent_number == user_number).order_by(Query.id.desc()).limit(
-                business_constants[business_code]["messages_historical"]).all()
-            role_queries = sorted(role_queries, key=lambda x: x.id)
-            for query in role_queries:
-                messages.append({"role": "user", "content": query.query_sent})
-                messages.append({"role": "assistant", "content": query.query_received})
-        db.close()
-        messages.append({"role": "user", "content": question})
-
-        response = openai.ChatCompletion.create(
-            model=business_constants[business_code]["openai_model"],
-            messages=messages,
-            temperature=0.3,
-            n=1,
-            stop=None
-        )
-        return response.choices[0].message.content.strip()
-    else:
-        prompt = f'Responde 1 si el siguiente texto es un saludo o un agradecimiento\\\nTexto: "{question}"'
-        response = get_completion(prompt, business_code)
-        if response == '1':
+        try:
+            db: Session = get_db_conn(business_code)
+            if role == 'user':
+                role_messages = db.query(Message).filter(Message.user_number == user_number).order_by(
+                    Message.id.desc()).limit(business_constants[business_code]["messages_historical"]).all()
+                role_messages = sorted(role_messages, key=lambda x: x.id)
+                for message in role_messages:
+                    messages.append({"role": "user", "content": message.msg_sent})
+                    messages.append({"role": "assistant", "content": message.msg_received})
+            else:
+                role_queries = db.query(Query).filter(Query.agent_number == user_number).order_by(Query.id.desc()).limit(
+                    business_constants[business_code]["messages_historical"]).all()
+                role_queries = sorted(role_queries, key=lambda x: x.id)
+                for query in role_queries:
+                    messages.append({"role": "user", "content": query.query_sent})
+                    messages.append({"role": "assistant", "content": query.query_received})
+            db.close()
             messages.append({"role": "user", "content": question})
+
             response = openai.ChatCompletion.create(
                 model=business_constants[business_code]["openai_model"],
                 messages=messages,
+                request_timeout=60,
                 temperature=0.3,
                 n=1,
                 stop=None
             )
             return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
+    else:
+        prompt = f'Responde 1 si el siguiente texto es un saludo o un agradecimiento\\\nTexto: "{question}"'
+        response = get_completion(prompt, business_code)
+        if response == '1':
+            try:
+                messages.append({"role": "user", "content": question})
+                response = openai.ChatCompletion.create(
+                    model=business_constants[business_code]["openai_model"],
+                    messages=messages,
+                    request_timeout=60,
+                    temperature=0.3,
+                    n=1,
+                    stop=None
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as e:
+                return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
         else:
             return f'Hola, lo siento pero no comprendo lo que deseas decirme, intenta preguntarme de otra forma. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
 
 
 def get_completion(prompt, business_code):
-    response = openai.Completion.create(
-        engine=business_constants[business_code]["openai_engine"],
-        prompt=prompt,
-        temperature=0.3,
-        n=1,
-        stop=None
-    )
+    try:
+        response = openai.Completion.create(
+            engine=business_constants[business_code]["openai_engine"],
+            prompt=prompt,
+            request_timeout=60,
+            temperature=0.3,
+            n=1,
+            stop=None
+        )
 
-    return response.choices[0].text.strip()
+        return response.choices[0].text.strip()
+    except Exception as e:
+        return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
 
 
 def get_order(number_user, business_code):
@@ -854,7 +871,8 @@ def save_petition(number_user, topic_name, petition_step, petition_steptype, sta
                 if status_code is not None:
                     petition.status_code = status_code
         else:
-            petition_number = create_petition(number_user, topic_name, petition_step, business_code)
+            if petition_step != 'cancel':
+                petition_number = create_petition(number_user, topic_name, petition_step, business_code)
             petition.status_code = 'CAN'
         petition.petition_date = datetime.now()
         if petition_request != '':
