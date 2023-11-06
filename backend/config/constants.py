@@ -253,6 +253,8 @@ for business in business_enables:
     alias_ai = parameter.parameter_value
     parameter = db.query(Parameter).filter(Parameter.parameter_name == 'alias_business').first()
     alias_business = parameter.parameter_value
+    parameter = db.query(Parameter).filter(Parameter.parameter_name == 'alias_site').first()
+    alias_site = parameter.parameter_value
 
     # Limpiar directorios
     topic_names = []
@@ -357,6 +359,7 @@ for business in business_enables:
                                                   'alias_item': alias_item,
                                                   'alias_ai': alias_ai,
                                                   'alias_business': alias_business,
+                                                  'alias_site': alias_site,
                                                   'topic_workflows': topic_workflows,
                                                   'topic_catalogs': topic_catalogs,
                                                   'topic_context': topic_context,
