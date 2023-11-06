@@ -586,6 +586,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
 def answer_transfer_agent(business_code):
     answer = f'Ya realicé la notificación para que te atienda un {business_constants[business_code]["alias_expert"]}.\n'
     answer += f'En unos minutos uno de nuestros representantes te brindará asistencia.\n'
+    answer += f'En nuestra página https://www.carefullywork.com puede encontrar información. registrarse, buscar vacantes y/o solicitar personal disponible.\n'
     answer += f'Fue un placer para mi atenderte.'
     return answer
 
