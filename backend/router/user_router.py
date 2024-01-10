@@ -23,9 +23,10 @@ templates = Jinja2Templates(directory='./frontend/templates')
 @auth_required
 def users_list(request: Request, business_code: str):
     db: Session = get_db_conn(business_code)
-    users = db.query(User).order_by(User.user_lastmsg.desc()).all()
+    search = request.query_params.get('search', '')
+    users = db.query(User).filter(User.user_whatsapp.like(f"%{search}%")).order_by(User.user_lastmsg.desc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/users/users.html', {'request': request, 'users': users, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+    return templates.TemplateResponse('dashboard/users/users.html', {'request': request, 'users': users, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code, 'search': search})
 
 
 @user_app.get('/{business_code}/users/view/{user_number}', response_class=HTMLResponse)

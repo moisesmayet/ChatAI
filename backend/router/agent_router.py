@@ -18,9 +18,10 @@ templates = Jinja2Templates(directory='./frontend/templates')
 @auth_required
 def agents_list(request: Request, business_code: str):
     db: Session = get_db_conn(business_code)
-    agents = db.query(Agent).order_by(Agent.agent_name.asc()).all()
+    search = request.query_params.get('search', '')
+    agents = db.query(Agent).filter(Agent.agent_whatsapp.like(f"%{search}%")).order_by(Agent.agent_name).all()
     db.close()
-    return templates.TemplateResponse('dashboard/agents/agents.html', {'request': request, 'agents': agents, 'agent': '', 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+    return templates.TemplateResponse('dashboard/agents/agents.html', {'request': request, 'agents': agents, 'agent': '', 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code, 'search': search})
 
 
 @agent_app.get('/{business_code}/agents/view/{agent_number}', response_class=HTMLResponse)

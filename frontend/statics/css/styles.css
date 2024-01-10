@@ -41,3 +41,29 @@
 .custom-cell-width {
   width: 10px;
 }
+
+span.search-icon {
+  position: absolute;
+  margin-left: 10px;
+  margin-top: 10px;
+}
+
+.container-1{
+  width: 300px;
+  vertical-align: middle;
+  white-space: nowrap;
+  position: relative;
+}
+
+.container-1 input#search{
+  width: 250px;
+  height: 40px;
+  background: #FFFFFF;
+  font-size: 10pt;
+  float: left;
+  color: #63717f;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+  border-width: medium;
+}

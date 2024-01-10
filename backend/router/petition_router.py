@@ -17,10 +17,11 @@ templates = Jinja2Templates(directory='./frontend/templates')
 @auth_required
 def petitions_list(request: Request, business_code: str):
     db: Session = get_db_conn(business_code)
-    petitions = db.query(Petition).order_by(Petition.petition_number.asc()).all()
+    search = request.query_params.get('search', '')
+    petitions = db.query(Petition).filter(Petition.user_number.like(f"%{search}%")).order_by(Petition.petition_number.asc()).all()
     statuses = db.query(Status).all()
     db.close()
-    return templates.TemplateResponse('dashboard/petitions/petitions.html', {'request': request, 'petitions': petitions, 'statuses': statuses, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+    return templates.TemplateResponse('dashboard/petitions/petitions.html', {'request': request, 'petitions': petitions, 'statuses': statuses, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code, 'search': search})
 
 
 @petition_app.get('/{business_code}/petitions/view/{petition_number}', response_class=HTMLResponse)

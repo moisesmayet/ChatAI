@@ -5,6 +5,15 @@
       <div class="col-lg-6 col-7">
         <h6>{{ language.petitions }}</h6>
       </div>
+
+      <div class="col-3">
+          <div class="container-1">
+              <form action="{{ url_for('petitions_list', business_code=business_code) }}" id="searchForm" method="get">
+                  <input class="form-control" name="search" type="search" id="search" placeholder="{{ language.search }}..." value="{{ search }}"/>
+                  <span class="search-icon"><a href="#" onclick="document.getElementById ('searchForm').submit();"><i class="fa fa-search"></i></a></span>
+              </form>
+          </div>
+      </div>
     </div>
   </div>
 

@@ -17,10 +17,11 @@ templates = Jinja2Templates(directory='./frontend/templates')
 @auth_required
 def orders_list(request: Request, business_code: str):
     db: Session = get_db_conn(business_code)
-    orders = db.query(Order).order_by(Order.order_number.asc()).all()
+    search = request.query_params.get('search', '')
+    orders = db.query(Order).filter(Order.user_number.like(f"%{search}%")).order_by(Order.order_number.asc()).all()
     statuses = db.query(Status).all()
     db.close()
-    return templates.TemplateResponse('dashboard/orders/orders.html', {'request': request, 'orders': orders, 'statuses': statuses, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+    return templates.TemplateResponse('dashboard/orders/orders.html', {'request': request, 'orders': orders, 'statuses': statuses, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code, 'search': search})
 
 
 @order_app.get('/{business_code}/orders/view/{order_number}', response_class=HTMLResponse)
