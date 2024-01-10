@@ -1198,8 +1198,11 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
         agent_whatsapp = agent.agent_whatsapp
         agent_name = agent.agent_name
         msg_count = 3
+        alias_user = business_constants[business_code]["alias_user"]
+        if alias_user != notify_usuario:
+            alias_user = f'{alias_user} {notify_usuario}'
         agent_message = [
-            f'Hola {agent_name}, el {business_constants[business_code]["alias_user"]} {notify_usuario} ha solicitado hablar con un {business_constants[business_code]["alias_expert"]}.']
+            f'Hola {agent_name}, el {alias_user} ha solicitado hablar con un {business_constants[business_code]["alias_expert"]}.']
 
         # Se le envía al agente las preguntas que el usuario realizó en el día de actual
         messages = db.query(Message).filter(Message.user_number == notify_number).order_by(Message.id.desc()).limit(
@@ -1218,7 +1221,7 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
 
         if notify_whatsapp != '':
             agent_message.append(
-                f'El número de contacto del {business_constants[business_code]["alias_user"]} {notify_usuario} es +{notify_whatsapp}.')
+                f'El número de contacto del {alias_user} es +{notify_whatsapp}.')
 
         send_text(agent_message, agent_whatsapp, business_code)
 
