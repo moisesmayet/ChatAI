@@ -169,7 +169,7 @@ async def users_report(request: Request, business_code: str, user_number: str):
 
 @user_app.post('/{business_code}/users/send', response_class=HTMLResponse)
 async def send_chat(request: Request, business_code: str):
-    if request.cookies.get('Permission') == 'super':
+    if request.cookies.get('Permission') == 'staff' or request.cookies.get('Permission') == 'super':
         form = await request.form()
         form = {field: form[field] for field in form}
         chat_msg = form['chat_msg']
