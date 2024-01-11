@@ -721,7 +721,7 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
     else:
         prompt = f'Responde 1 si el siguiente texto es un saludo o un agradecimiento\\\nTexto: "{question}"'
         response = get_completion(prompt, business_code)
-        if response == '1':
+        if response and response[0] == '1':
             try:
                 messages.append({"role": "user", "content": question})
                 response = openai.ChatCompletion.create(
