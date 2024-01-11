@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from backend.router.scheduler.scheduler_router import scheduler_app
 from backend.router.admin.admin_router import admin_app
 from backend.router.admin.business_router import business_app
 from backend.router.auth.auth_router import auth_app
@@ -27,6 +28,9 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*'],
 )
+
+# System
+app.include_router(scheduler_app)
 
 # Admin
 app.include_router(admin_app)

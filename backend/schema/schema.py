@@ -102,6 +102,7 @@ class BusinessBase(BaseModel):
     business_email: str
     business_enable: bool
     business_create: Optional[datetime]
+    business_notification: bool
 
 
 class BusinessDelete(BaseModel):

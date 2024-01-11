@@ -146,10 +146,13 @@ def get_default_business_code():
 
 
 business_codes = [business_code_local]
+business_notification = []
 business_constants = {}
 business_enables = get_business()
 for business in business_enables:
     business_codes.append(business.business_code)
+    if business.business_notification:
+        business_notification.append(business)
 
     # Directorio de persistencia del índice
     index_persist_dir = f'backend/data_index/{business.business_code}'

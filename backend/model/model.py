@@ -53,7 +53,7 @@ class Bug(db_conn):
     __tablename__ = "bugs"
 
     id = Column(Integer, primary_key=True)
-    bug_description = Column(String(1000))
+    bug_description = Column(Text)
     bug_origin = Column(String(1000))
     bug_date = Column(DateTime, default=datetime.utcnow)
 
@@ -69,6 +69,7 @@ class Business(db_conn):
     business_email = Column(String(254))
     business_enable = Column(Boolean, default=True)
     business_create = Column(DateTime, default=datetime.utcnow)
+    business_notification = Column(Boolean, default=False)
 
 
 class Log(db_conn):
