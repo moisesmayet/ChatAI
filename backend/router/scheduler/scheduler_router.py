@@ -11,7 +11,7 @@ scheduler_app = APIRouter()
 
 
 @scheduler_app.on_event('startup')
-@repeat_at(cron="40 12 * * *")
+@repeat_at(cron="0 8 * * *")
 async def send_notification():
     # Obtener la fecha actual y calcular la fecha del día anterior
     fecha_actual = datetime.now()
@@ -38,12 +38,21 @@ async def send_notification():
 
         db.close()
 
+        language = constants.get_language(constants.lang_code, business.business_code)
+
         business_message = f'Saludos {business.business_contact}, a continuación le envio el reporte diario:'
         if users > 0:
-            business_message += f'\n{users} usuarios estuvieron interactuactuando con {business.business_name}.'
-            business_message += f'\nSe respondieron aproximandemente {messages} mensajes.'
+            if users > 1:
+                business_message += f'\n - {users} {str(language["users"]).lower()} estuvieron interactuando con {business.business_name}.'
+            else:
+                business_message += f'\n - Solo un {str(language["user"]).lower()} interactuó con {business.business_name}.'
+
+            if messages > 1:
+                business_message += f'\n - Se respondieron aproximandemente {messages} mensajes.'
+            else:
+                business_message += f'\n - Se respondió un solo mensaje.'
         else:
-            business_message += f'\nNingún usuario se contactó con {business.business_name}.'
+            business_message += f'\n - Ningún {str(language["user"]).lower()} se contactó con {business.business_name}.'
 
         send_text(business_message, business.business_phone, business.business_code)
 
