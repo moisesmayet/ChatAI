@@ -87,6 +87,38 @@
                     >
                   </div>
 
+                  <label>{{ language.active }}</label>
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      id="business_enable"
+                      class="form-check-input"
+                      type="checkbox"
+                      name="business_enable"
+                      {% if business.business_enable %}
+                        checked
+                      {% endif %}
+                      {% if business_enable %}
+                        disabled
+                      {% endif %}
+                    >
+                  </div>
+
+                  <label>{{ language.report }}</label>
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      id="business_notification"
+                      class="form-check-input"
+                      type="checkbox"
+                      name="business_notification"
+                      {% if business.business_notification %}
+                        checked
+                      {% endif %}
+                      {% if business_notification %}
+                        disabled
+                      {% endif %}
+                    >
+                  </div>
+
                   <div class="float-end">
                     <button type="submit" name="business_edit" class="btn bg-gradient-dark w-100 my-4 mb-2">{{ language.confirm }}</button>
                   </div>

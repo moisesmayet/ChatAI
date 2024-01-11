@@ -56,6 +56,13 @@ async def business_new(request: Request):
     form = await request.form()
     form = {field: form[field] for field in form}
 
+    business_enable = False
+    business_notification = False
+    if 'business_enable' in form:
+        business_enable = True
+    if 'business_notification' in form:
+        business_notification = True
+
     db: Session = get_local_db_conn()
     while True:
         business_code = generate_random_key(30)
@@ -63,7 +70,7 @@ async def business_new(request: Request):
         if business is None:
             break
 
-    new_business = Business(business_name=form['business_name'], business_contact=form['business_contact'], business_address=form['business_address'], business_phone=form['business_phone'], business_email=form['business_email'])
+    new_business = Business(business_name=form['business_name'], business_contact=form['business_contact'], business_address=form['business_address'], business_phone=form['business_phone'], business_email=form['business_email'], business_enable=business_enable, business_notification=business_notification)
     db.add(new_business)
     db.commit()
     db.close()
@@ -92,8 +99,15 @@ async def business_edit(request: Request, business_id: str):
     form = await request.form()
     form = {field: form[field] for field in form}
 
+    business_enable = False
+    business_notification = False
+    if 'business_enable' in form:
+        business_enable = True
+    if 'business_notification' in form:
+        business_notification = True
+
     db: Session = get_local_db_conn()
-    business = Business(business_code=business_id, business_description=form['business_description'])
+    business = Business(business_code=business_id, business_name=form['business_name'], business_contact=form['business_contact'], business_address=form['business_address'], business_phone=form['business_phone'], business_email=form['business_email'], business_enable=business_enable, business_notification=business_notification)
     db.merge(business)
     db.commit()
     db.close()

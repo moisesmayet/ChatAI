@@ -21,7 +21,9 @@
 				  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.email }}</th>
 			  {% endif %}
 			  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.phone }}</th>
-			  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">{{ language.create }}</th>
+			  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.create }}</th>
+			  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.active }}</th>
+			  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">{{ language.report }}</th>
 			  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
 			  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
 			  <th class="text-center">
@@ -79,6 +81,26 @@
 				  <div class="avatar-group mt-2">
 					<span class="text-xs font-weight-bold"> {{ item.business_create }} </span>
 				  </div>
+				</td>
+
+				<td>
+					<div class="form-check form-switch avatar-group mt-2 d-flex justify-content-center">
+					  {% if item.business_enable %}
+						<input class="form-check-input" type="checkbox" disabled checked>
+					  {% else %}
+						<input class="form-check-input" type="checkbox" disabled>
+					  {% endif %}
+					</div>
+				</td>
+
+				<td>
+					<div class="form-check form-switch avatar-group mt-2 d-flex justify-content-center">
+					  {% if item.business_notification %}
+						<input class="form-check-input" type="checkbox" disabled checked>
+					  {% else %}
+						<input class="form-check-input" type="checkbox" disabled>
+					  {% endif %}
+					</div>
 				</td>
 
 				<td class="align-middle text-center text-sm custom-cell-width">

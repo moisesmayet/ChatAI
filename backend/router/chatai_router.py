@@ -281,6 +281,7 @@ async def webhook_whatsapp(request: Request, business_code: str):
                             save_message(user_whatsapp, message, '', message_type, 'whatsapp', agent, None,
                                          business_code)
                             save_bug(business_code, str(e), 'whatsapp')
+                            notify_bug(f'def: webhook_whatsapp\nmensaje: {message}\nerror: {str(e)}', business_code)
                             return JSONResponse({'status': 'no_messages'}, status_code=200)
 
     # No hay mensajes disponibles
@@ -580,6 +581,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                 'check_transfer_agent': check_transfer_agent}
     except Exception as e:
         save_bug(business_code, str(e), 'whatsapp')
+        notify_bug(f'def: get_answer\nmensaje: {query_message}\nerror: {str(e)}', business_code)
         return {'answer': '', 'send_answer': False, 'notify': False, 'check_transfer_agent': False}
 
 
@@ -596,7 +598,7 @@ def transfer_agent(behavior, query_message, query_number, query_role, business_c
     agent_notify = False
     prompt = f'Responde 1 si el texto es un pedido o solicitud. Reponde 0 si el texto es una pregunta\\\nTexto: "{query_message}"'
     sentence = get_completion(prompt, business_code)
-    if sentence == '1':
+    if sentence and sentence[0] == '1':
         answer = answer_transfer_agent(business_code)
         agent_notify = True
     else:
@@ -682,6 +684,7 @@ def get_promptcompletion(prompt, business_code):
         )
         return response.choices[0].message['content']
     except Exception as e:
+        notify_bug(f'def: get_promptcompletion\nmensaje: {prompt}\nerror: {str(e)}', business_code)
         return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
 
 
@@ -717,6 +720,7 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
+            notify_bug(f'def: get_chatcompletion\nmensaje: {question}\nerror: {str(e)}', business_code)
             return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
     else:
         prompt = f'Responde 1 si el siguiente texto es un saludo o un agradecimiento\\\nTexto: "{question}"'
@@ -734,6 +738,7 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
                 )
                 return response.choices[0].message.content.strip()
             except Exception as e:
+                notify_bug(f'def: get_chatcompletion\nmensaje: {question}\nerror: {str(e)}', business_code)
                 return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
         else:
             return f'Hola, lo siento pero no comprendo lo que deseas decirme, intenta preguntarme de otra forma. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
@@ -752,6 +757,7 @@ def get_completion(prompt, business_code):
 
         return response.choices[0].text.strip()
     except Exception as e:
+        notify_bug(f'def: get_completion\nmensaje: {prompt}\nerror: {str(e)}', business_code)
         return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
 
 
@@ -1235,6 +1241,14 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
 
     # Cerramos la conexión y el cursor
     db.close()
+
+
+def notify_bug(business_bug, business_code):
+    db: Session = get_db_conn(business_code)
+    agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_super.is_(True)).first()
+    db.close()
+
+    send_text([f'Ha ocurrido un error en la aplicación {business_code}:\n{business_bug}'], agent.agent_whatsapp, business_code)
 
 
 def send_messages(send_answer, send_notify, message_type, user_response, user_whatsapp, answers, agent, filename,

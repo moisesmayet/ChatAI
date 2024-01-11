@@ -99,6 +99,34 @@
                   disabled
                 >
               </div>
+
+              <label>{{ language.active }}</label>
+              <div class="form-check form-switch mb-3">
+                <input
+                  id="business_enable"
+                  class="form-check-input"
+                  type="checkbox"
+                  name="business_enable"
+                  {% if business.business_enable %}
+                    checked
+                  {% endif %}
+                  disabled
+                >
+              </div>
+
+              <label>{{ language.report }}</label>
+              <div class="form-check form-switch mb-3">
+                <input
+                  id="business_notification"
+                  class="form-check-input"
+                  type="checkbox"
+                  name="business_notification"
+                  {% if business.business_notification %}
+                    checked
+                  {% endif %}
+                  disabled
+                >
+              </div>
             </div>
         </div>
     </div>
