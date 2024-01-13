@@ -1,4 +1,6 @@
 import io
+import json
+import requests
 import pandas as pd
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -9,7 +11,7 @@ from starlette.responses import StreamingResponse
 from backend import main
 from backend.config import constants
 from backend.router.auth.auth_router import auth_required
-from backend.model.model import User, Message
+from backend.model.model import User, Agent, Message
 from backend.config.db import get_db_conn
 from sqlalchemy.orm import Session
 
@@ -57,7 +59,14 @@ def users_messages(request: Request, business_code: str, user_number: str):
     user_messages = db.query(Message).filter(Message.user_number == user_number).order_by(Message.id.asc()).all()
 
     db.close()
-    return templates.TemplateResponse('dashboard/users/users_messages.html', {'request': request, 'users': users, 'user_messages': user_messages, 'user_number': user_number, 'user_whatsapp': user.user_whatsapp, 'button_end': user.user_wait, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+
+    msg_date = last_message.msg_date
+    diferencia = datetime.now() - msg_date
+    button_start = False
+    if diferencia >= timedelta(hours=24):
+        button_start = True
+
+    return templates.TemplateResponse('dashboard/users/users_messages.html', {'request': request, 'users': users, 'user_messages': user_messages, 'user_number': user_number, 'user_whatsapp': user.user_whatsapp, 'button_start': button_start, 'button_end': user.user_wait, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
 
 
 @user_app.get('/{business_code}/users/edit/{user_number}', response_class=HTMLResponse)
@@ -176,14 +185,19 @@ async def send_chat(request: Request, business_code: str):
         user_number = form['chat_number']
         user_whatsapp = form['chat_whatsapp']
 
-        user_wait = True
-        if 'close_chat' in form:
-            chat_msg = f'Fue un placer atenderte. Si tienes más consultas o necesitas asistencia en el futuro no dudes en escribir.\n¡Que sigas teniendo un maravilloso día!'
-            user_wait = False
-
-        send_text(chat_msg, user_whatsapp, business_code)
-
         db: Session = get_db_conn(business_code)
+
+        user_wait = True
+        if user_wait:  # form['chat_start']:
+            agent_number = request.cookies.get('UserId')
+            agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
+            send_template(agent.agent_name, user_whatsapp, chat_msg, business_code)
+        else:
+            if 'close_chat' in form:
+                chat_msg = f'Fue un placer atenderte. Si tienes más consultas o necesitas asistencia en el futuro no dudes en escribir.\n¡Que sigas teniendo un maravilloso día!'
+                user_wait = False
+
+            send_text(chat_msg, user_whatsapp, business_code)
 
         new_message = Message(user_number=user_number, msg_sent='', msg_received=chat_msg.strip(), msg_type='text', msg_origin='agent', msg_date=datetime.now())
         db.add(new_message)
@@ -238,3 +252,55 @@ def send_text(anwser, numberwa, business_code):
     mensajewa = WhatsApp(constants.business_constants[business_code]["whatsapp_token"], constants.business_constants[business_code]["whatsapp_id"])
     # enviar los mensajes
     mensajewa.send_message(message=anwser, recipient_id=numberwa)
+
+
+def send_template(agent_name, user_whatsapp, agent_anwser, business_code):
+    # url = f'https://graph.facebook.com/v17.0/159540240573780/messages'
+    # bearer = f'Bearer EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK'
+    url = f'{constants.business_constants[business_code]["whatsapp_url"]}{constants.business_constants[business_code]["whatsapp_id"]}/messages'
+    bearer = f'Bearer {constants.business_constants[business_code]["whatsapp_token"]}'
+
+    payload = json.dumps({
+        "messaging_product": "whatsapp",
+        "to": user_whatsapp,
+        "type": "template",
+        "template": {
+            "name": "consentimiento_usuario",
+            "language": {
+                "code": "es"
+            },
+            "components": [
+                {
+                    "type": "header",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": agent_name
+                        }
+                    ]
+                },
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": agent_anwser
+                        }
+                    ]
+                }
+            ]
+        }
+    })
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': bearer
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    """
+    mensajewa = WhatsApp("EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK", "159540240573780")
+    # mensajewa = WhatsApp(constants.business_constants[business_code]["whatsapp_token"], constants.business_constants[business_code]["whatsapp_id"])
+    componente = '{"type": "header","parameters": [{"type": "text","text": "' + agent_name + '"}]},{"type": "body","parameters": [{"type": "text","text": "' + agent_anwser + '"}]}'
+    mensajewa.send_template('consentimiento_usuario', user_whatsapp, components=[componente], lang="es")
+    """

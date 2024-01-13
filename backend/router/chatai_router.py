@@ -281,7 +281,7 @@ async def webhook_whatsapp(request: Request, business_code: str):
                             save_message(user_whatsapp, message, '', message_type, 'whatsapp', agent, None,
                                          business_code)
                             save_bug(business_code, str(e), 'whatsapp')
-                            notify_bug(f'def: webhook_whatsapp\nmensaje: {message}\nerror: {str(e)}', business_code)
+                            notify_bug(f'webhook_whatsapp', message, str(e), business_code)
                             return JSONResponse({'status': 'no_messages'}, status_code=200)
 
     # No hay mensajes disponibles
@@ -581,7 +581,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                 'check_transfer_agent': check_transfer_agent}
     except Exception as e:
         save_bug(business_code, str(e), 'whatsapp')
-        notify_bug(f'def: get_answer\nmensaje: {query_message}\nerror: {str(e)}', business_code)
+        notify_bug(f'get_answer', query_message, str(e), business_code)
         return {'answer': '', 'send_answer': False, 'notify': False, 'check_transfer_agent': False}
 
 
@@ -684,7 +684,7 @@ def get_promptcompletion(prompt, business_code):
         )
         return response.choices[0].message['content']
     except Exception as e:
-        notify_bug(f'def: get_promptcompletion\nmensaje: {prompt}\nerror: {str(e)}', business_code)
+        notify_bug(f'get_promptcompletion', prompt, str(e), business_code)
         return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
 
 
@@ -720,7 +720,7 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            notify_bug(f'def: get_chatcompletion\nmensaje: {question}\nerror: {str(e)}', business_code)
+            notify_bug(f'get_chatcompletion', question, str(e), business_code)
             return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
     else:
         prompt = f'Responde 1 si el siguiente texto es un saludo o un agradecimiento\\\nTexto: "{question}"'
@@ -738,7 +738,7 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
                 )
                 return response.choices[0].message.content.strip()
             except Exception as e:
-                notify_bug(f'def: get_chatcompletion\nmensaje: {question}\nerror: {str(e)}', business_code)
+                notify_bug(f'et_chatcompletion', question, str(e), business_code)
                 return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
         else:
             return f'Hola, lo siento pero no comprendo lo que deseas decirme, intenta preguntarme de otra forma. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
@@ -757,7 +757,7 @@ def get_completion(prompt, business_code):
 
         return response.choices[0].text.strip()
     except Exception as e:
-        notify_bug(f'def: get_completion\nmensaje: {prompt}\nerror: {str(e)}', business_code)
+        notify_bug(f'get_completion', prompt, str(e), business_code)
         return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
 
 
@@ -1203,13 +1203,13 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
         agent_number = agent.agent_number
         agent_whatsapp = agent.agent_whatsapp
         agent_name = agent.agent_name
+        """
         msg_count = 3
         alias_user = business_constants[business_code]["alias_user"]
         if alias_user != notify_usuario:
             alias_user = f'{alias_user} {notify_usuario}'
         agent_message = [
             f'Hola {agent_name}, el {alias_user} ha solicitado hablar con un {business_constants[business_code]["alias_expert"]}.']
-
         # Se le envía al agente las preguntas que el usuario realizó en el día de actual
         messages = db.query(Message).filter(Message.user_number == notify_number).order_by(Message.id.desc()).limit(
             msg_count).all()
@@ -1230,6 +1230,8 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
                 f'El número de contacto del {alias_user} es +{notify_whatsapp}.')
 
         send_text(agent_message, agent_whatsapp, business_code)
+        """
+        send_template(agent_name, agent_whatsapp, notify_usuario, notify_whatsapp, business_code)
 
         # Actualizar la hora de atención
         agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
@@ -1243,12 +1245,60 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db.close()
 
 
-def notify_bug(business_bug, business_code):
+def notify_bug(business_def, business_msg, business_bug, business_code):
     db: Session = get_db_conn(business_code)
     agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_super.is_(True)).first()
     db.close()
 
-    send_text([f'Ha ocurrido un error en la aplicación {business_code}:\n{business_bug}'], agent.agent_whatsapp, business_code)
+    # url = f'https://graph.facebook.com/v17.0/159540240573780/messages'
+    # bearer = f'Bearer EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK'
+    url = f'{business_constants[business_code]["whatsapp_url"]}{business_constants[business_code]["whatsapp_id"]}/messages'
+    bearer = f'Bearer {business_constants[business_code]["whatsapp_token"]}'
+
+    payload = json.dumps({
+        "messaging_product": "whatsapp",
+        "to": agent.agent_whatsapp,
+        "type": "template",
+        "template": {
+            "name": "notificacion_error",
+            "language": {
+                "code": "es"
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": business_code
+                        },
+                        {
+                            "type": "text",
+                            "text": business_def
+                        },
+                        {
+                            "type": "text",
+                            "text": business_msg
+                        },
+                        {
+                            "type": "text",
+                            "text": business_bug
+                        }
+                    ]
+                }
+            ]
+        }
+    })
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': bearer
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    # message = f'El siguiente error ha ocurrido en la aplicación {business_code}:\nFunción: {business_def}\nMensaje: {business_msg}\nError: {business_bug}'
+    # send_text([message], agent.agent_whatsapp, business_code)
 
 
 def send_messages(send_answer, send_notify, message_type, user_response, user_whatsapp, answers, agent, filename,
@@ -1275,6 +1325,56 @@ def send_text(answers, numberwa, business_code):
     # enviar los mensajes
     for answer in answers:
         mensajewa.send_message(message=answer, recipient_id=numberwa)
+
+
+def send_template(agent_name, agent_whatsapp, user_name, user_whatsapp, business_code):
+    # url = f'https://graph.facebook.com/v17.0/159540240573780/messages'
+    # bearer = f'Bearer EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK'
+    url = f'{business_constants[business_code]["whatsapp_url"]}{business_constants[business_code]["whatsapp_id"]}/messages'
+    bearer = f'Bearer {business_constants[business_code]["whatsapp_token"]}'
+
+    payload = json.dumps({
+        "messaging_product": "whatsapp",
+        "to": agent_whatsapp,
+        "type": "template",
+        "template": {
+            "name": "notificacion_agente",
+            "language": {
+                "code": "es"
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": agent_name
+                        },
+                        {
+                            "type": "text",
+                            "text": user_name
+                        },
+                        {
+                            "type": "text",
+                            "text": user_whatsapp
+                        }
+                    ]
+                }
+            ]
+        }
+    })
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': bearer
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    """
+    mensajewa = WhatsApp(constants.business_constants[business_code]["whatsapp_token"], constants.business_constants[business_code]["whatsapp_id"])
+    componente = '{"type": "body","parameters": [{"type": "text","text": "' + agent_name + '"},{"type": "text","text": "' + user_name + '"},{"type": "text","text": "' + user_whatsapp + '"}]}'
+    mensajewa.send_template('notificacion_agente', agent_whatsapp, components=[componente], lang="es")
+    """
 
 
 def send_voice(answers, numberwa, agent, filename, business_code):

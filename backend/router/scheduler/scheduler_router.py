@@ -1,3 +1,5 @@
+import json
+import requests
 from fastapi import APIRouter
 from fastapi_utilities import repeat_at
 from datetime import datetime, timedelta
@@ -11,7 +13,7 @@ scheduler_app = APIRouter()
 
 
 @scheduler_app.on_event('startup')
-@repeat_at(cron="0 8 * * *")
+@repeat_at(cron="38 0 * * *")
 async def send_notification():
     # Obtener la fecha actual y calcular la fecha del día anterior
     fecha_actual = datetime.now()
@@ -40,24 +42,68 @@ async def send_notification():
 
         language = constants.get_language(constants.lang_code, business.business_code)
 
-        business_message = f'Saludos {business.business_contact}, a continuación le envio el reporte diario:'
+        business_users = f'Ningún {str(language["user"]).lower()} se contactó con el chatbot.'
+        business_messages = f'No se respondieron mensajes'
         if users > 0:
             if users > 1:
-                business_message += f'\n - {users} {str(language["users"]).lower()} estuvieron interactuando con {business.business_name}.'
+                business_users = f'{users} {str(language["users"]).lower()} estuvieron interactuando con el chatbot.'
             else:
-                business_message += f'\n - Solo un {str(language["user"]).lower()} interactuó con {business.business_name}.'
+                business_users = f'Solo un {str(language["user"]).lower()} interactuó con el chatbot.'
 
             if messages > 1:
-                business_message += f'\n - Se respondieron aproximandemente {messages} mensajes.'
+                business_messages = f'Se respondieron aproximandemente {messages} mensajes.'
             else:
-                business_message += f'\n - Se respondió un solo mensaje.'
-        else:
-            business_message += f'\n - Ningún {str(language["user"]).lower()} se contactó con {business.business_name}.'
+                business_messages = f'Se respondió un solo mensaje.'
 
-        send_text(business_message, business.business_phone, business.business_code)
+        send_template(business.business_contact, business.business_phone, business_users, business_messages, business.business_code)
 
 
-def send_text(anwser, numberwa, business_code):
+def send_template(agent_name, agent_whatsapp, text_users, text_messages, business_code):
+    # url = f'https://graph.facebook.com/v17.0/159540240573780/messages'
+    # bearer = f'Bearer EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK'
+    url = f'{constants.business_constants[business_code]["whatsapp_url"]}{constants.business_constants[business_code]["whatsapp_id"]}/messages'
+    bearer = f'Bearer {constants.business_constants[business_code]["whatsapp_token"]}'
+
+    payload = json.dumps({
+        "messaging_product": "whatsapp",
+        "to": agent_whatsapp,
+        "type": "template",
+        "template": {
+            "name": "notificacion_diaria",
+            "language": {
+                "code": "es"
+            },
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": agent_name
+                        },
+                        {
+                            "type": "text",
+                            "text": text_users
+                        },
+                        {
+                            "type": "text",
+                            "text": text_messages
+                        }
+                    ]
+                }
+            ]
+        }
+    })
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': bearer
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    """
+    # mensajewa = WhatsApp("EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK", "159540240573780")
     mensajewa = WhatsApp(constants.business_constants[business_code]["whatsapp_token"], constants.business_constants[business_code]["whatsapp_id"])
-    # enviar los mensajes
-    mensajewa.send_message(message=anwser, recipient_id=numberwa)
+    componente = '{"type": "body","parameters": [{"type": "text","text": "' + agent_name + '"},{"type": "text","text": "' + text_users + '"},{"type": "text","text": "' + text_messages + '"}]}'
+    mensajewa.send_template('notificacion_diaria', agent_whatsapp, components=[componente], lang="es")
+    """
