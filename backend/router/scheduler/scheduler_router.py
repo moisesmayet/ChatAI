@@ -13,7 +13,7 @@ scheduler_app = APIRouter()
 
 
 @scheduler_app.on_event('startup')
-@repeat_at(cron="38 0 * * *")
+@repeat_at(cron="0 8 * * *")
 async def send_notification():
     # Obtener la fecha actual y calcular la fecha del día anterior
     fecha_actual = datetime.now()

@@ -188,7 +188,7 @@ async def send_chat(request: Request, business_code: str):
         db: Session = get_db_conn(business_code)
 
         user_wait = True
-        if user_wait:  # form['chat_start']:
+        if form['chat_start'] == 'True':
             agent_number = request.cookies.get('UserId')
             agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
             send_template(agent.agent_name, user_whatsapp, chat_msg, business_code)
