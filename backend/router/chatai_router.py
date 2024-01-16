@@ -518,6 +518,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                         else:
                             answer = get_chatcompletion(behavior, query_message, query_number, query_role,
                                                         business_code)
+                            if answer == 'not_chatcompletion':
+                                answer = f'¿Puedes decirme un poco más para entenderte mejor?. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
                             check_transfer_agent = True
             else:
                 answer = ''
@@ -558,7 +560,9 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
                                     'check_transfer_agent': check_transfer_agent}
                     answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
-
+                    if answer == 'check_transfer_agent':
+                        answer = f'Hola, lo siento pero no comprendo lo que deseas decirme, intenta preguntarme de otra forma. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
+                        check_transfer_agent = True
                 process_answer(answer, business_code)
         else:
             answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
@@ -566,7 +570,10 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
         answer = str(answer)
         if 'None, es un placer.' in answer:
             answer_split = answer.split("None, es un placer.", 1)
-            answer = answer_split[1].strip()
+            if answer_split.count() > 1:
+                answer = answer_split[1].strip()
+            else:
+                answer = f'Es un placer asistirle'
 
         if business_constants[business_code]["messages_translator"] and index_context != '1':
             language = get_language(query_message, answer, business_code)
@@ -603,6 +610,8 @@ def transfer_agent(behavior, query_message, query_number, query_role, business_c
         agent_notify = True
     else:
         answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
+        if answer == 'not_chatcompletion':
+            answer = f'Háblame un poco más de eso'
     return {'agent_notify': agent_notify, 'answer': answer}
 
 
@@ -738,10 +747,10 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
                 )
                 return response.choices[0].message.content.strip()
             except Exception as e:
-                notify_bug(f'et_chatcompletion', question, str(e), business_code)
+                notify_bug(f'get_chatcompletion', question, str(e), business_code)
                 return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
         else:
-            return f'Hola, lo siento pero no comprendo lo que deseas decirme, intenta preguntarme de otra forma. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
+            return f'not_chatcompletion'
 
 
 def get_completion(prompt, business_code):
