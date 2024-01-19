@@ -519,7 +519,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             answer = get_chatcompletion(behavior, query_message, query_number, query_role,
                                                         business_code)
                             if answer == 'not_chatcompletion':
-                                answer = f'¿Puedes decirme un poco más para entenderte mejor?. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
+                                answer = f'Quizás un {business_constants[business_code]["alias_expert"]} podría responder mejor tus inquietudes'
                             check_transfer_agent = True
             else:
                 answer = ''
@@ -561,7 +561,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                     'check_transfer_agent': check_transfer_agent}
                     answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
                     if answer == 'check_transfer_agent':
-                        answer = f'Hola, lo siento pero no comprendo lo que deseas decirme, intenta preguntarme de otra forma. También tienes la opción de solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
+                        answer = f'Hola, si deseas un {business_constants[business_code]["alias_expert"]} podría responder mejor tus inquietudes'
                         check_transfer_agent = True
                 process_answer(answer, business_code)
         else:
@@ -674,7 +674,7 @@ def get_index(query, options, index_default, business_code):
     if len(index) == 1:
         index = index[0]
         if index.isdigit():
-            if int(index) <= len(business_constants[business_code]["topic_list"]):
+            if int(index) < len(business_constants[business_code]["topic_list"]):
                 return index
 
     return index_default
