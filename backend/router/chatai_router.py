@@ -584,6 +584,10 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                 answer = re.findall(r'"([^"]*)"', answer)
                 answer = answer[0]
 
+        if answer == 'not_chatcompletion':
+            answer = f'Quizás un {business_constants[business_code]["alias_expert"]} podría responder mejor tus inquietudes'
+            check_transfer_agent = True
+
         return {'answer': answer, 'send_answer': True, 'notify': agent_notify,
                 'check_transfer_agent': check_transfer_agent}
     except Exception as e:
