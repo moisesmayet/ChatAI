@@ -281,7 +281,7 @@ async def webhook_whatsapp(request: Request, business_code: str):
                             save_message(user_whatsapp, message, '', message_type, 'whatsapp', agent, None,
                                          business_code)
                             save_bug(business_code, str(e), 'whatsapp')
-                            notify_bug(f'webhook_whatsapp', message, str(e), business_code)
+                            notify_bug(f'webhook_whatsapp', user_whatsapp, message, str(e), business_code)
                             return JSONResponse({'status': 'no_messages'}, status_code=200)
 
     # No hay mensajes disponibles
@@ -413,7 +413,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                 behavior = behavior.replace(f'{business_constants[business_code]["alias_user"]}', query_usuario)
 
             index_context = get_index(query_message, business_constants[business_code]["topic_context"], 'None',
-                                      business_code)
+                                      query_number, business_code)
             if index_context == 'None':
                 index_context = answering_name(business_code, query_number, 'None')
 
@@ -508,7 +508,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
 
                         user_name = get_completion(
                             f'''Extrae el nombre de la persona del texto y si no hay nombre contesta "None": {query_message}''',
-                            business_code)
+                            query_number, business_code)
                         if user_name.endswith('.'):
                             user_name = user_name[:-1]
                         if user_name != 'None' and re.match('^[A-Za-z][a-z]+( [A-Za-z][a-z]+)?$', user_name,
@@ -525,11 +525,11 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                 answer = ''
                 if query_role == 'agent':
                     topic_order = f'"<1> Información del {business_constants[business_code]["alias_user"]}", "<2> Información de mensajes"'
-                    sentence = get_index(query_message, topic_order, '0', business_code)
+                    sentence = get_index(query_message, topic_order, '0', query_number, business_code)
                     if sentence != '0':
                         number = get_completion(
                             f'''Extrae el número telefónico del texto y si no hay número contesta "None": {query_message}''',
-                            business_code)
+                            query_number, business_code)
                         if number != 'None':
                             number = str(number).replace('+', '')
                             if number.isdigit():
@@ -543,7 +543,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                     if sentence == '2':
                                         cantidad = get_completion(
                                             f'''Extrae la cantidad de mensajes del texto y si no hay cantidad contesta "1": {query_message}''',
-                                            business_code)
+                                            query_number, business_code)
                                         if cantidad.isdigit():
                                             db: Session = get_db_conn(business_code)
                                             messages = db.query(Message).filter(Message.user_number == number).order_by(
@@ -576,11 +576,11 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                 answer = f'Es un placer asistirle'
 
         if business_constants[business_code]["messages_translator"] and index_context != '1':
-            language = get_language(query_message, answer, business_code)
+            language = get_language(query_message, answer, query_number, business_code)
             if language != 'None':
                 answer = get_promptcompletion(
                     f'Debes traducir siguiente texto "{answer}" al {language} y dar solo la traducción como respuesta.',
-                    business_code)
+                    query_number, business_code)
                 answer = re.findall(r'"([^"]*)"', answer)
                 answer = answer[0]
 
@@ -588,7 +588,7 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                 'check_transfer_agent': check_transfer_agent}
     except Exception as e:
         save_bug(business_code, str(e), 'whatsapp')
-        notify_bug(f'get_answer', query_message, str(e), business_code)
+        notify_bug(f'get_answer', query_number, query_message, str(e), business_code)
         return {'answer': '', 'send_answer': False, 'notify': False, 'check_transfer_agent': False}
 
 
@@ -604,7 +604,7 @@ def answer_transfer_agent(business_code):
 def transfer_agent(behavior, query_message, query_number, query_role, business_code):
     agent_notify = False
     prompt = f'Responde 1 si el texto es un pedido o solicitud. Reponde 0 si el texto es una pregunta\\\nTexto: "{query_message}"'
-    sentence = get_completion(prompt, business_code)
+    sentence = get_completion(prompt, query_number, business_code)
     if sentence and sentence[0] == '1':
         answer = answer_transfer_agent(business_code)
         agent_notify = True
@@ -667,9 +667,9 @@ def get_query_index(key_topic, business_code):
         return None
 
 
-def get_index(query, options, index_default, business_code):
+def get_index(query, options, index_default, user_number, business_code):
     prompt = f'Buscar el elemento de la lista tiene mayor similitud al texto: "{query}"\n\nOptions:\n{options}\nSi no encuentra relación responde ""\nEjemplo:<1> El sol'
-    index_context = get_promptcompletion(prompt, business_code)
+    index_context = get_promptcompletion(prompt, user_number, business_code)
     index = re.findall(r"(\d+)", index_context)
     if len(index) == 1:
         index = index[0]
@@ -680,7 +680,7 @@ def get_index(query, options, index_default, business_code):
     return index_default
 
 
-def get_promptcompletion(prompt, business_code):
+def get_promptcompletion(prompt, user_number, business_code):
     try:
         messages = [{'role': 'user', 'content': prompt}]
         response = openai.ChatCompletion.create(
@@ -693,7 +693,7 @@ def get_promptcompletion(prompt, business_code):
         )
         return response.choices[0].message['content']
     except Exception as e:
-        notify_bug(f'get_promptcompletion', prompt, str(e), business_code)
+        notify_bug(f'get_promptcompletion', user_number, prompt, str(e), business_code)
         return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
 
 
@@ -729,11 +729,11 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            notify_bug(f'get_chatcompletion', question, str(e), business_code)
+            notify_bug(f'get_chatcompletion', user_number, question, str(e), business_code)
             return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
     else:
         prompt = f'Responde 1 si el siguiente texto es un saludo o un agradecimiento\\\nTexto: "{question}"'
-        response = get_completion(prompt, business_code)
+        response = get_completion(prompt, user_number, business_code)
         if response and response[0] == '1':
             try:
                 messages.append({"role": "user", "content": question})
@@ -747,13 +747,13 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
                 )
                 return response.choices[0].message.content.strip()
             except Exception as e:
-                notify_bug(f'get_chatcompletion', question, str(e), business_code)
+                notify_bug(f'get_chatcompletion', user_number, question, str(e), business_code)
                 return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
         else:
             return f'not_chatcompletion'
 
 
-def get_completion(prompt, business_code):
+def get_completion(prompt, user_number, business_code):
     try:
         response = openai.Completion.create(
             engine=business_constants[business_code]["openai_engine"],
@@ -766,7 +766,7 @@ def get_completion(prompt, business_code):
 
         return response.choices[0].text.strip()
     except Exception as e:
-        notify_bug(f'get_completion', prompt, str(e), business_code)
+        notify_bug(f'get_completion', user_number, prompt, str(e), business_code)
         return f'En este momento estamos atendiendo el máximo de usuarios. Lamentamos este inconveniente. Por favor escríbanos en unos minutos y con gusto le atenderemos'
 
 
@@ -1254,7 +1254,7 @@ def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db.close()
 
 
-def notify_bug(business_def, business_msg, business_bug, business_code):
+def notify_bug(business_def, user_number, business_msg, business_bug, business_code):
     db: Session = get_db_conn(business_code)
     agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_super.is_(True)).first()
     db.close()
@@ -1280,6 +1280,10 @@ def notify_bug(business_def, business_msg, business_bug, business_code):
                         {
                             "type": "text",
                             "text": business_code
+                        },
+                        {
+                            "type": "text",
+                            "text": user_number
                         },
                         {
                             "type": "text",
@@ -1736,15 +1740,15 @@ def transcribe_audio(audio, api_key, business_code):
             return ''
 
 
-def get_language(query, anwers, business_code):
+def get_language(query, anwers, user_number, business_code):
     lang_code = str(business_constants[business_code]['lang_code']).split('-')[1]
     languaje_query = get_completion(f'Responde cuál es el idioma del siguiente texto "{query}". ejemplo: "Español"',
-                                    business_code)
+                                    user_number, business_code)
     messages_lang = business_constants[business_code]["messages_lang"]
     if lang_code != languaje_query and languaje_query in messages_lang:
         languaje_anwer = get_completion(
             f'Responde cuál es el idioma del siguiente texto "{anwers}". ejemplo: "Español"',
-            business_code)
+            user_number, business_code)
         if languaje_query != languaje_anwer:
             return languaje_query
 
