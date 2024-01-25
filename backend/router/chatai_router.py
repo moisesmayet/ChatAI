@@ -402,168 +402,173 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
         check_transfer_agent = False
         answer = ''
         if query_message.strip() != '':
-            if query_role == 'user':
-                behavior = business_constants[business_code]["behavior_user"]
+            patron = re.compile(r'\bcomunicarme\b.*?\b{}\b'.format(re.escape(business_constants[business_code]["alias_expert"])))
+            if patron.search(query_message):
+                answer = answer_transfer_agent(business_code)
+                agent_notify = True
             else:
-                behavior = business_constants[business_code]["behavior_agent"]
-            if query_usuario is None or query_usuario == '':
-                behavior = behavior.replace(f'{business_constants[business_code]["alias_user"]}',
-                                            business_constants[business_code]["alias_user"])
-            else:
-                behavior = behavior.replace(f'{business_constants[business_code]["alias_user"]}', query_usuario)
+                if query_role == 'user':
+                    behavior = business_constants[business_code]["behavior_user"]
+                else:
+                    behavior = business_constants[business_code]["behavior_agent"]
+                if query_usuario is None or query_usuario == '':
+                    behavior = behavior.replace(f'{business_constants[business_code]["alias_user"]}',
+                                                business_constants[business_code]["alias_user"])
+                else:
+                    behavior = behavior.replace(f'{business_constants[business_code]["alias_user"]}', query_usuario)
 
-            index_context = get_index(query_message, business_constants[business_code]["topic_context"], 'None',
-                                      query_number, business_code)
-            if index_context == 'None':
-                index_context = answering_name(business_code, query_number, 'None')
+                index_context = get_index(query_message, business_constants[business_code]["topic_context"], 'None',
+                                          query_number, business_code)
+                if index_context == 'None':
+                    index_context = answering_name(business_code, query_number, 'None')
 
-            if index_context != 'None' and query_role != 'agents':
-                if index_context != '0' and index_context != '1':
-                    key_topic = business_constants[business_code]["topic_list"][index_context]
-                    db: Session = get_db_conn(business_code)
-                    topic = db.query(Topic).filter(Topic.topic_name == key_topic).first()
-                    db.close()
-                    if not is_workflow_unique(query_number, key_topic, topic.type_code, business_code):
-                        if is_workflow(business_code, key_topic):
-                            send_answer = True
-                            if query_origin == 'whatsapp':
-                                petition = get_open_petition(query_number, key_topic, business_code)
-
-                                if petition is None:
-                                    workflow = get_workflow(business_code, 'None', key_topic, '', 'interactive', False)
-                                else:
-                                    if petition.petition_steptype != 'confirm':
-                                        petition_step = petition.petition_step
-                                        petition_steptype = petition.petition_steptype
-                                    else:
-                                        petition_step = petition.petition_stepfrom
-                                        petition_steptype = 'data'
-
-                                    petition_request = f'¿Desea continuar con "{topic.topic_description}"?'
-                                    workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
-                                                       'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
-                                                       'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
-                                                       'BUTTON3': 'Cancelar', 'GOTOID3': 'cancel'}
-                                    workflow = create_workflow(business_code, petition.petition_number, key_topic,
-                                                               petition_step, workflow_values,
-                                                               True)
-                                payload = json_button(workflow)
-                                send_json(query_number, payload, business_code)
-                                answer = workflow['text']
-                                send_answer = False
-                            else:
-                                answer = f'Para ayudarte mejor con esta solicitud, te recomendamos escribir a nuestro Whatsapp {business_constants[business_code]["whatsapp_number"]}'
-                            return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify,
-                                    'check_transfer_agent': check_transfer_agent}
-                        else:
-                            if is_catalog(business_code, key_topic):
+                if index_context != 'None' and query_role != 'agents':
+                    if index_context != '0' and index_context != '1':
+                        key_topic = business_constants[business_code]["topic_list"][index_context]
+                        db: Session = get_db_conn(business_code)
+                        topic = db.query(Topic).filter(Topic.topic_name == key_topic).first()
+                        db.close()
+                        if not is_workflow_unique(query_number, key_topic, topic.type_code, business_code):
+                            if is_workflow(business_code, key_topic):
+                                send_answer = True
                                 if query_origin == 'whatsapp':
-                                    catalog = get_catalog(business_code, key_topic)
-                                    payload = json_catalog(catalog)
+                                    petition = get_open_petition(query_number, key_topic, business_code)
+
+                                    if petition is None:
+                                        workflow = get_workflow(business_code, 'None', key_topic, '', 'interactive', False)
+                                    else:
+                                        if petition.petition_steptype != 'confirm':
+                                            petition_step = petition.petition_step
+                                            petition_steptype = petition.petition_steptype
+                                        else:
+                                            petition_step = petition.petition_stepfrom
+                                            petition_steptype = 'data'
+
+                                        petition_request = f'¿Desea continuar con "{topic.topic_description}"?'
+                                        workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
+                                                           'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
+                                                           'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
+                                                           'BUTTON3': 'Cancelar', 'GOTOID3': 'cancel'}
+                                        workflow = create_workflow(business_code, petition.petition_number, key_topic,
+                                                                   petition_step, workflow_values,
+                                                                   True)
+                                    payload = json_button(workflow)
                                     send_json(query_number, payload, business_code)
-                                    answer = f'Con gusto aquí le mostramos nuestro catálogo'
+                                    answer = workflow['text']
+                                    send_answer = False
                                 else:
-                                    answer = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al nuestro Whatsapp  {business_constants[business_code]["whatsapp_number"]} para enviarte nuestro catálogo'
-                                return {'answer': answer, 'send_answer': True, 'notify': agent_notify,
+                                    answer = f'Para ayudarte mejor con esta solicitud, te recomendamos escribir a nuestro Whatsapp {business_constants[business_code]["whatsapp_number"]}'
+                                return {'answer': answer, 'send_answer': send_answer, 'notify': agent_notify,
                                         'check_transfer_agent': check_transfer_agent}
                             else:
-                                reply = get_reply_info(query_message, query_number, query_origin, query_type,
-                                                       query_agent,
-                                                       business_code)
-                                if reply:
-                                    return {'answer': reply['answers'][0], 'send_answer': reply['respond'],
-                                            'notify': False, 'check_transfer_agent': check_transfer_agent}
+                                if is_catalog(business_code, key_topic):
+                                    if query_origin == 'whatsapp':
+                                        catalog = get_catalog(business_code, key_topic)
+                                        payload = json_catalog(catalog)
+                                        send_json(query_number, payload, business_code)
+                                        answer = f'Con gusto aquí le mostramos nuestro catálogo'
+                                    else:
+                                        answer = f'Si desea adquirir un {business_constants[business_code]["alias_item"]}, le recomendamos escribir al nuestro Whatsapp  {business_constants[business_code]["whatsapp_number"]} para enviarte nuestro catálogo'
+                                    return {'answer': answer, 'send_answer': True, 'notify': agent_notify,
+                                            'check_transfer_agent': check_transfer_agent}
+                                else:
+                                    reply = get_reply_info(query_message, query_number, query_origin, query_type,
+                                                           query_agent,
+                                                           business_code)
+                                    if reply:
+                                        return {'answer': reply['answers'][0], 'send_answer': reply['respond'],
+                                                'notify': False, 'check_transfer_agent': check_transfer_agent}
 
-                        if answer == '':
-                            behavior += f'Basándote en la siguiente información de contexto.\\\n{{context_str}}\\\n'
-                            behavior += f'Responde el siguiente texto: "{{query_str}}"\\\n'
-                            qa_template = Prompt(behavior)
+                            if answer == '':
+                                behavior += f'Basándote en la siguiente información de contexto.\\\n{{context_str}}\\\n'
+                                behavior += f'Responde el siguiente texto: "{{query_str}}"\\\n'
+                                qa_template = Prompt(behavior)
 
-                            query_index = get_query_index(key_topic, business_code)
-                            if query_index is not None:
-                                answer = query_index.as_query_engine(text_qa_template=qa_template).query(
-                                    query_message).response
-                            else:
-                                answer = f'En este momento estamos atendiendo el máximo de usuarios. Si deseas puedes solicitar comunicarte directamente con un {business_constants[business_code]["alias_expert"]}'
-                    else:
-                        if topic.type_code == 'WFU':
-                            answer = f'Ya realizaste este proceso. Si deseas puedes solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
+                                query_index = get_query_index(key_topic, business_code)
+                                if query_index is not None:
+                                    answer = query_index.as_query_engine(text_qa_template=qa_template).query(
+                                        query_message).response
+                                else:
+                                    answer = f'En este momento estamos atendiendo el máximo de usuarios. Si deseas puedes solicitar comunicarte directamente con un {business_constants[business_code]["alias_expert"]}'
                         else:
+                            if topic.type_code == 'WFU':
+                                answer = f'Ya realizaste este proceso. Si deseas puedes solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
+                            else:
+                                transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
+                                answer = transfer['answer']
+                                agent_notify = transfer['agent_notify']
+
+                        process_answer(answer, business_code)
+                    else:
+                        if index_context == '0':
                             transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
                             answer = transfer['answer']
                             agent_notify = transfer['agent_notify']
-
-                    process_answer(answer, business_code)
-                else:
-                    if index_context == '0':
-                        transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
-                        answer = transfer['answer']
-                        agent_notify = transfer['agent_notify']
-                    else:
-                        reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
-                                               business_code)
-                        if reply:
-                            return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
-                                    'check_transfer_agent': check_transfer_agent}
-
-                        user_name = get_completion(
-                            f'''Extrae el nombre de la persona del texto y si no hay nombre contesta "None": {query_message}''',
-                            query_number, business_code)
-                        if user_name.endswith('.'):
-                            user_name = user_name[:-1]
-                        if user_name != 'None' and re.match('^[A-Za-z][a-z]+( [A-Za-z][a-z]+)?$', user_name,
-                                                            re.IGNORECASE):
-                            update_user(query_number, user_name, business_code)
-                            answer = f'{user_name}, es un placer. ¿En qué puedo ayudarte?'
                         else:
-                            answer = get_chatcompletion(behavior, query_message, query_number, query_role,
-                                                        business_code)
-                            if answer == 'not_chatcompletion':
-                                answer = f'Quizás un {business_constants[business_code]["alias_expert"]} podría responder mejor tus inquietudes'
-                            check_transfer_agent = True
-            else:
-                answer = ''
-                if query_role == 'agent':
-                    topic_order = f'"<1> Información del {business_constants[business_code]["alias_user"]}", "<2> Información de mensajes"'
-                    sentence = get_index(query_message, topic_order, '0', query_number, business_code)
-                    if sentence != '0':
-                        number = get_completion(
-                            f'''Extrae el número telefónico del texto y si no hay número contesta "None": {query_message}''',
-                            query_number, business_code)
-                        if number != 'None':
-                            number = str(number).replace('+', '')
-                            if number.isdigit():
-                                if sentence == '1':
-                                    db: Session = get_db_conn(business_code)
-                                    user = db.query(User).filter(User.user_number == number).first()
-                                    if user:
-                                        answer = f'El número pertenece al {business_constants[business_code]["alias_user"]} {user.user_name}'
-                                    db.close()
-                                else:
-                                    if sentence == '2':
-                                        cantidad = get_completion(
-                                            f'''Extrae la cantidad de mensajes del texto y si no hay cantidad contesta "1": {query_message}''',
-                                            query_number, business_code)
-                                        if cantidad.isdigit():
-                                            db: Session = get_db_conn(business_code)
-                                            messages = db.query(Message).filter(Message.user_number == number).order_by(
-                                                Message.id.desc()).limit(cantidad).all()
-                                            for message in messages:
-                                                answer += f'[{message.msg_date}] {message.msg_sent}\n{message.msg_received}\n'
-                                            db.close()
+                            reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
+                                                   business_code)
+                            if reply:
+                                return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
+                                        'check_transfer_agent': check_transfer_agent}
 
-                if answer == '':
-                    if query_type == 'interactive':
-                        reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
-                                               business_code)
-                        if reply:
-                            return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
-                                    'check_transfer_agent': check_transfer_agent}
-                    answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
-                    if answer == 'check_transfer_agent':
-                        answer = f'Hola, si deseas un {business_constants[business_code]["alias_expert"]} podría responder mejor tus inquietudes'
-                        check_transfer_agent = True
-                process_answer(answer, business_code)
+                            user_name = get_completion(
+                                f'''Extrae el nombre de la persona del texto y si no hay nombre contesta "None": {query_message}''',
+                                query_number, business_code)
+                            if user_name.endswith('.'):
+                                user_name = user_name[:-1]
+                            if user_name != 'None' and re.match('^[A-Za-z][a-z]+( [A-Za-z][a-z]+)?$', user_name,
+                                                                re.IGNORECASE):
+                                update_user(query_number, user_name, business_code)
+                                answer = f'{user_name}, es un placer. ¿En qué puedo ayudarte?'
+                            else:
+                                answer = get_chatcompletion(behavior, query_message, query_number, query_role,
+                                                            business_code)
+                                if answer == 'not_chatcompletion':
+                                    answer = f'Quizás un {business_constants[business_code]["alias_expert"]} podría responder mejor tus inquietudes'
+                                check_transfer_agent = True
+                else:
+                    answer = ''
+                    if query_role == 'agent':
+                        topic_order = f'"<1> Información del {business_constants[business_code]["alias_user"]}", "<2> Información de mensajes"'
+                        sentence = get_index(query_message, topic_order, '0', query_number, business_code)
+                        if sentence != '0':
+                            number = get_completion(
+                                f'''Extrae el número telefónico del texto y si no hay número contesta "None": {query_message}''',
+                                query_number, business_code)
+                            if number != 'None':
+                                number = str(number).replace('+', '')
+                                if number.isdigit():
+                                    if sentence == '1':
+                                        db: Session = get_db_conn(business_code)
+                                        user = db.query(User).filter(User.user_number == number).first()
+                                        if user:
+                                            answer = f'El número pertenece al {business_constants[business_code]["alias_user"]} {user.user_name}'
+                                        db.close()
+                                    else:
+                                        if sentence == '2':
+                                            cantidad = get_completion(
+                                                f'''Extrae la cantidad de mensajes del texto y si no hay cantidad contesta "1": {query_message}''',
+                                                query_number, business_code)
+                                            if cantidad.isdigit():
+                                                db: Session = get_db_conn(business_code)
+                                                messages = db.query(Message).filter(Message.user_number == number).order_by(
+                                                    Message.id.desc()).limit(cantidad).all()
+                                                for message in messages:
+                                                    answer += f'[{message.msg_date}] {message.msg_sent}\n{message.msg_received}\n'
+                                                db.close()
+
+                    if answer == '':
+                        if query_type == 'interactive':
+                            reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
+                                                   business_code)
+                            if reply:
+                                return {'answer': reply['answers'][0], 'send_answer': reply['respond'], 'notify': False,
+                                        'check_transfer_agent': check_transfer_agent}
+                        answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
+                        if answer == 'check_transfer_agent':
+                            answer = f'Hola, si deseas un {business_constants[business_code]["alias_expert"]} podría responder mejor tus inquietudes'
+                            check_transfer_agent = True
+                    process_answer(answer, business_code)
         else:
             answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
 
@@ -1209,42 +1214,33 @@ def update_user(user_number, user_name, business_code):
 def notify(notify_number, notify_whatsapp, notify_usuario, business_code):
     db: Session = get_db_conn(business_code)
 
-    # Se busca un agente que este dispoible y lleve mas tiempo libre
+    # Se busca un agente que este dispoible y lleve más tiempo libre
     agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_staff.is_(True)).order_by(
         Agent.agent_lastcall.asc()).first()
     if agent:
         agent_number = agent.agent_number
         agent_whatsapp = agent.agent_whatsapp
         agent_name = agent.agent_name
-        """
-        msg_count = 3
-        alias_user = business_constants[business_code]["alias_user"]
-        if alias_user != notify_usuario:
-            alias_user = f'{alias_user} {notify_usuario}'
-        agent_message = [
-            f'Hola {agent_name}, el {alias_user} ha solicitado hablar con un {business_constants[business_code]["alias_expert"]}.']
-        # Se le envía al agente las preguntas que el usuario realizó en el día de actual
-        messages = db.query(Message).filter(Message.user_number == notify_number).order_by(Message.id.desc()).limit(
-            msg_count).all()
-        questions = [message.msg_sent for message in messages]
-        if questions:
-            if len(questions) > 1:
-                agent_message.append(
-                    f'A continuación te muestro los {len(questions)} útimos mesajes:')
-                questions.reverse()
-            else:
-                agent_message.append(f'A continuación te muestro el útimo mesaje:')
 
-            for question in questions:
-                agent_message.append(question)
+        user = db.query(User).filter(User.user_number == agent.agent_whatsapp).first()
+        last_message = db.query(Message).filter(Message.id == user.user_lastmsg).first()
+        current_datetime = datetime.now()
+        # Calcular la diferencia entre las fechas
+        time_difference = current_datetime - last_message.msg_date
+        # Definir el umbral en horas
+        threshold = timedelta(hours=24)
+        if time_difference < threshold:
+            alias_user = business_constants[business_code]["alias_user"]
+            if alias_user != notify_usuario:
+                alias_user = f'{alias_user} {notify_usuario}'
+            agent_message = f'Hola {agent_name},\nEl {alias_user} ha solicitado hablar con un {business_constants[business_code]["alias_expert"]}.'
 
-        if notify_whatsapp != '':
-            agent_message.append(
-                f'El número de contacto del {alias_user} es +{notify_whatsapp}.')
+            if notify_whatsapp != '':
+                agent_message += f' Su número de contacto es +{notify_whatsapp}.'
 
-        send_text(agent_message, agent_whatsapp, business_code)
-        """
-        send_template(agent_name, agent_whatsapp, notify_usuario, notify_whatsapp, business_code)
+            send_text([agent_message], agent_whatsapp, business_code)
+        else:
+            send_template(agent_name, agent_whatsapp, notify_usuario, notify_whatsapp, business_code)
 
         # Actualizar la hora de atención
         agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
@@ -1262,9 +1258,10 @@ def notify_bug(business_def, user_number, business_msg, business_bug, business_c
     db: Session = get_db_conn(business_code)
     agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_super.is_(True)).first()
     db.close()
-
-    # url = f'https://graph.facebook.com/v17.0/159540240573780/messages'
-    # bearer = f'Bearer EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK'
+    """
+    url = f'https://graph.facebook.com/v17.0/159540240573780/messages'
+    bearer = f'Bearer EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK'
+    """
     url = f'{business_constants[business_code]["whatsapp_url"]}{business_constants[business_code]["whatsapp_id"]}/messages'
     bearer = f'Bearer {business_constants[business_code]["whatsapp_token"]}'
 
