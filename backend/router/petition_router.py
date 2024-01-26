@@ -18,7 +18,7 @@ templates = Jinja2Templates(directory='./frontend/templates')
 def petitions_list(request: Request, business_code: str):
     db: Session = get_db_conn(business_code)
     search = request.query_params.get('search', '')
-    petitions = db.query(Petition).filter(Petition.user_number.like(f"%{search}%")).order_by(Petition.petition_number.asc()).all()
+    petitions = db.query(Petition).filter(Petition.user_number.like(f"%{search}%")).order_by(Petition.petition_date.desc()).all()
     statuses = db.query(Status).all()
     db.close()
     return templates.TemplateResponse('dashboard/petitions/petitions.html', {'request': request, 'petitions': petitions, 'statuses': statuses, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code, 'search': search})
@@ -29,7 +29,7 @@ def petitions_list(request: Request, business_code: str):
 def petitions_view(request: Request, business_code: str, petition_number: str):
     permission = request.cookies.get('Permission')
     db: Session = get_db_conn(business_code)
-    petitions = db.query(Petition).order_by(Petition.petition_number.asc()).all()
+    petitions = db.query(Petition).order_by(Petition.petition_date.desc()).all()
     petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
     statuses = db.query(Status).all()
     db.close()
@@ -41,7 +41,7 @@ async def petitions_edit(request: Request, business_code: str, petition_number: 
     permission = request.cookies.get('Permission')
     if permission == 'super':
         db: Session = get_db_conn(business_code)
-        petitions = db.query(Petition).order_by(Petition.petition_number.asc()).all()
+        petitions = db.query(Petition).order_by(Petition.petition_date.desc()).all()
         petition = db.query(Petition).filter(Petition.petition_number == petition_number).first()
         statuses = db.query(Status).all()
         db.close()
