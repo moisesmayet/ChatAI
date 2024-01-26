@@ -72,47 +72,42 @@ def users_messages(request: Request, business_code: str, user_number: str):
 @user_app.get('/{business_code}/users/edit/{user_number}', response_class=HTMLResponse)
 async def users_edit(request: Request, business_code: str, user_number: str):
     permission = request.cookies.get('Permission')
-    if permission == 'super':
-        db: Session = get_db_conn(business_code)
-        users = db.query(User).order_by(User.user_lastmsg.desc()).all()
-        user = db.query(User).filter(User.user_number == user_number).first()
-        db.close()
-        return templates.TemplateResponse('dashboard/users/users_edit.html',
-                                          {'request': request, 'users': users, 'user': user,
-                                           'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
-
-    return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
+    db: Session = get_db_conn(business_code)
+    users = db.query(User).order_by(User.user_lastmsg.desc()).all()
+    user = db.query(User).filter(User.user_number == user_number).first()
+    db.close()
+    return templates.TemplateResponse('dashboard/users/users_edit.html',
+                                      {'request': request, 'users': users, 'user': user,
+                                       'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
 
 
 @user_app.post('/{business_code}/users/edit/{user_number}', response_class=HTMLResponse)
 async def users_edit(request: Request, business_code: str, user_number: str):
     permission = request.cookies.get('Permission')
-    if permission == 'super':
-        form = await request.form()
-        form = {field: form[field] for field in form}
-        user_whatsapp = form['user_whatsapp']
+    form = await request.form()
+    form = {field: form[field] for field in form}
+    user_whatsapp = form['user_whatsapp']
 
-        db: Session = get_db_conn(business_code)
-        user = db.query(User).filter(User.user_number == user_number).first()
-        user_ws = db.query(User).filter((User.user_number != user_number) & (User.user_whatsapp == user_whatsapp)).first()
-        if not user_ws:
-            user.user_name = form['user_name']
-            user.user_whatsapp = user_whatsapp
-            db.merge(user)
-            db.commit()
+    db: Session = get_db_conn(business_code)
+    user = db.query(User).filter(User.user_number == user_number).first()
+    user_ws = db.query(User).filter((User.user_number != user_number) & (User.user_whatsapp == user_whatsapp)).first()
+    if not user_ws:
+        user.user_name = form['user_name']
+        user.user_whatsapp = user_whatsapp
+        db.merge(user)
+        db.commit()
 
-            redirect = RedirectResponse(url=user_app.url_path_for('users_list', business_code=business_code))
-            redirect.status_code = 302
-            return redirect
-        else:
-            msg = f'Exists other {constants.business_constants[business_code]["alias_user"]} with same whatsapp'
-            users = db.query(User).order_by(User.user_lastmsg.desc()).all()
-            return templates.TemplateResponse('dashboard/users/users_edit.html',
-                                              {'request': request, 'users': users, 'user': user,
-                                               'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code,
-                                               'msg': msg})
-        db.close()
-    return RedirectResponse(main.dashboard_app.url_path_for('signin', business_code=business_code))
+        redirect = RedirectResponse(url=user_app.url_path_for('users_list', business_code=business_code))
+        redirect.status_code = 302
+        return redirect
+    else:
+        msg = f'Exists other {constants.business_constants[business_code]["alias_user"]} with same whatsapp'
+        users = db.query(User).order_by(User.user_lastmsg.desc()).all()
+        return templates.TemplateResponse('dashboard/users/users_edit.html',
+                                          {'request': request, 'users': users, 'user': user,
+                                           'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code,
+                                           'msg': msg})
+    db.close()
 
 
 @user_app.get('/{business_code}/users/report/{user_number}', response_class=HTMLResponse)

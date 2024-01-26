@@ -28,9 +28,7 @@
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">{{ language.lastdate }}</th>
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
-            {% if permission == 'super' %}
-              <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
-            {% endif %}
+            <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
             <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
                 <a href="{{ url_for('users_report', user_number='0', business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                     <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Communication/Group-chat.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
@@ -100,8 +98,7 @@
                 </a>
               </td>
 
-              {% if permission == 'super' %}
-                <td class="align-middle text-center text-sm custom-cell-width">
+              <td class="align-middle text-center text-sm custom-cell-width">
                   <a href="{{ url_for('users_edit', user_number=item.user_number, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
                     <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo8/dist/../src/media/svg/icons/Design/Edit.svg--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                         <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
@@ -111,8 +108,7 @@
                         </g>
                     </svg><!--end::Svg Icon--></span>
                   </a>
-                </td>
-              {% endif %}
+              </td>
 
               <td class="align-middle text-center text-sm custom-cell-width">
                 <a href="{{ url_for('users_report', user_number=item.user_number, business_code=business_code) }}" class="nav-link text-body font-weight-bold px-0">
