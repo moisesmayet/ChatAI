@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import requests
 import pandas as pd
 from fastapi import APIRouter, Request
@@ -105,9 +106,61 @@ async def users_edit(request: Request, business_code: str, user_number: str):
         users = db.query(User).order_by(User.user_lastmsg.desc()).all()
         return templates.TemplateResponse('dashboard/users/users_edit.html',
                                           {'request': request, 'users': users, 'user': user,
-                                           'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(), 'permission': permission, 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code,
+                                           'alias_user': constants.business_constants[business_code]["alias_user"].capitalize(),
+                                           'permission': permission, 'language': eval(request.cookies.get('UserLang')),
+                                           'menu': eval(request.cookies.get('Menu')), 'business_code': business_code,
                                            'msg': msg})
     db.close()
+
+
+@user_app.get('/{business_code}/users/marketing', response_class=HTMLResponse)
+async def users_marketing(request: Request, business_code: str):
+    permission = request.cookies.get('Permission')
+    db: Session = get_db_conn(business_code)
+    db.close()
+    return templates.TemplateResponse('dashboard/users/marketing.html',
+                                      {'request': request,
+                                       'permission': permission, 'language': eval(request.cookies.get('UserLang')),
+                                       'menu': eval(request.cookies.get('Menu')), 'business_code': business_code})
+
+
+@user_app.post('/{business_code}/users/marketing', response_class=HTMLResponse)
+async def users_marketing(request: Request, business_code: str):
+    permission = request.cookies.get('Permission')
+    form = await request.form()
+    form = {field: form[field] for field in form}
+    marketing_users = form['marketing_users']
+    marketing_message = form['marketing_message']
+
+    patron = re.compile(r'[\n\r\t,]')
+    users_numbers = re.sub(patron, ';', marketing_users)
+    users_numbers = re.sub(r';+', ';', users_numbers)
+    users_numbers = users_numbers.split(';')
+    users_numbers = list(set(users_numbers))
+    patron = re.compile(r'^18(09|29|49)\d{7}$')
+    invalid_numbers = [numero for numero in users_numbers if not re.match(patron, numero)]
+
+    if len(invalid_numbers) == 0:
+        user_id = request.cookies.get('UserId')
+        db: Session = get_db_conn(business_code)
+        agent = db.query(Agent).filter(Agent.agent_number == user_id).first()
+        users_numbers.append(agent.agent_whatsapp)
+        db.close()
+
+        for user_number in users_numbers:
+            send_template(agent.agent_name, user_number.strip(), marketing_message, "notificacion_marketing", business_code)
+
+        redirect = RedirectResponse(url=user_app.url_path_for('users_marketing', business_code=business_code))
+        redirect.status_code = 302
+        return redirect
+    else:
+        msg = f'Los siguientes números de usuarios no son válidos al formato (1XXXYYYZZZZ): {invalid_numbers}'
+        return templates.TemplateResponse('dashboard/users/marketing.html',
+                                          {'request': request,
+                                           'permission': permission, 'language': eval(request.cookies.get('UserLang')),
+                                           'menu': eval(request.cookies.get('Menu')), 'business_code': business_code,
+                                           'marketing_users': marketing_users, 'marketing_message': marketing_message,
+                                           'msg': msg})
 
 
 @user_app.get('/{business_code}/users/report/{user_number}', response_class=HTMLResponse)
@@ -186,7 +239,7 @@ async def send_chat(request: Request, business_code: str):
         if form['chat_start'] == 'True':
             agent_number = request.cookies.get('UserId')
             agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
-            send_template(agent.agent_name, user_whatsapp, chat_msg, business_code)
+            send_template(agent.agent_name, user_whatsapp, chat_msg, "consentimiento_usuario", business_code)
         else:
             if 'close_chat' in form:
                 chat_msg = f'Fue un placer atenderte. Si tienes más consultas o necesitas asistencia en el futuro no dudes en escribir.\n¡Que sigas teniendo un maravilloso día!'
@@ -249,43 +302,68 @@ def send_text(anwser, numberwa, business_code):
     mensajewa.send_message(message=anwser, recipient_id=numberwa)
 
 
-def send_template(agent_name, user_whatsapp, agent_anwser, business_code):
+def send_template(agent_name, user_whatsapp, agent_msg, template_name, business_code):
     # url = f'https://graph.facebook.com/v17.0/159540240573780/messages'
     # bearer = f'Bearer EABdgy5ZCsnccBOzrOq9CnnHjHPe9ZBCSJbr4xdsJtqFBFNRXCWKXkQeaiP8gvsZAAGtKZCEnWFzCHALZBEkEgPKJZAAZBjBR0kUIo0GZCZBgJQoOuwmZBacZB33THmuVjZAjVAfY2KU4Iw0ln1G6C3nFKNZBfflLMjmlNxw6hhyVsw81DDoBgLOSEXNcl6am67TO2d6DK'
     url = f'{constants.business_constants[business_code]["whatsapp_url"]}{constants.business_constants[business_code]["whatsapp_id"]}/messages'
     bearer = f'Bearer {constants.business_constants[business_code]["whatsapp_token"]}'
 
-    payload = json.dumps({
-        "messaging_product": "whatsapp",
-        "to": user_whatsapp,
-        "type": "template",
-        "template": {
-            "name": "consentimiento_usuario",
-            "language": {
-                "code": "es"
-            },
-            "components": [
-                {
-                    "type": "header",
-                    "parameters": [
-                        {
-                            "type": "text",
-                            "text": agent_name
-                        }
-                    ]
+    if template_name == "consentimiento_usuario":
+        payload = json.dumps({
+            "messaging_product": "whatsapp",
+            "to": user_whatsapp,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {
+                    "code": "es"
                 },
-                {
-                    "type": "body",
-                    "parameters": [
-                        {
-                            "type": "text",
-                            "text": agent_anwser
-                        }
-                    ]
-                }
-            ]
-        }
-    })
+                "components": [
+                    {
+                        "type": "header",
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": agent_name
+                            }
+                        ]
+                    },
+                    {
+                        "type": "body",
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": agent_msg
+                            }
+                        ]
+                    }
+                ]
+            }
+        })
+    else:
+        payload = json.dumps({
+            "messaging_product": "whatsapp",
+            "to": user_whatsapp,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {
+                    "code": "es"
+                },
+                "components": [
+                    {
+                        "type": "body",
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": agent_msg
+                            }
+                        ]
+                    }
+                ]
+            }
+        })
+
     headers = {
         'Content-Type': 'application/json',
         'Authorization': bearer

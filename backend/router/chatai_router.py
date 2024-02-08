@@ -17,6 +17,7 @@ from llama_index import Prompt, GPTVectorStoreIndex, SimpleDirectoryReader, LLMP
 from pydantic import BaseModel
 from backend.config.db import get_db_conn
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from backend.model.model import Agent, Message, Order, Product, Query, User, generate_random_key, Petition, Topic, Wsid, \
     Bug
 from backend.config.constants import business_constants, exists_business, is_catalog, is_workflow, get_media_recipient
@@ -215,9 +216,10 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                             petition_number = button_id[1]
                                             petition_step = button_id[2].replace(']', '')
                                             petition_step = format_step(petition_step)
-                                            petition = db.query(Petition).filter((Petition.user_number == user_whatsapp) &
-                                                                                 (Petition.topic_name == topic_name) &
-                                                                                 (Petition.status_code == 'CRE')).order_by(
+                                            petition = db.query(Petition).filter(
+                                                (Petition.user_number == user_whatsapp) &
+                                                (Petition.topic_name == topic_name) &
+                                                (Petition.status_code == 'CRE')).order_by(
                                                 Petition.petition_date.desc()).first()
                                             if (petition and petition.petition_number == petition_number) or (
                                                     petition_number == 'None' and petition_step != 'cancel'):
@@ -347,29 +349,37 @@ def reply_message(message, message_type, number_user, usuario, agent, user_compl
         watting = watting_agent(number_user, business_code)
         if not watting:
             reply = get_answer(message, role_wa, number_user, usuario, origin, message_type, agent, business_code)
-            agent_notify = reply['notify']
             answer = reply['answer']
-            answers.append(answer)
-            send_answer = reply['send_answer']
-            if reply['check_transfer_agent']:
-                suggest_transfer = suggest_transfer_agent(answer, number_user, business_code)
-                if not suggest_transfer['send_answer']:
-                    answers.append(suggest_transfer['answer'])
-                    send_answer = False
+            if answer != 'not_chatcompletion':
+                agent_notify = reply['notify']
+                answers.append(answer)
+                send_answer = reply['send_answer']
+                if reply['check_transfer_agent']:
+                    suggest_transfer = suggest_transfer_agent(answer, number_user, business_code)
+                    if not suggest_transfer['send_answer']:
+                        answers.append(suggest_transfer['answer'])
+                        send_answer = False
 
-            # Verificar si tiene mensajes hoy
-            current_date = datetime.now().date()
-            exists_msg = db.query(Message).filter(Message.user_number == number_user,
-                                                  Message.msg_date >= current_date).first()
+                # Verificar si tiene mensajes hoy
+                current_date = datetime.now().date()
+                exists_msg = db.query(Message).filter(Message.user_number == number_user,
+                                                      Message.msg_date >= current_date).first()
 
-            if exists_msg is None and not user_completed:
-                greetings = f'Mi nombre es {business_constants[business_code]["alias_ai"]} y estaré aquí para cualquier información que necesites.'
-                if origin != 'web':
-                    greetings += ' Me gustaría saber como te llamas.'
-                answers.append(greetings)
-                message_type = 'name'
+                if exists_msg is None and not user_completed:
+                    greetings = f'Mi nombre es {business_constants[business_code]["alias_ai"]} y estaré aquí para cualquier información que necesites.'
+                    if origin != 'web':
+                        greetings += ' Me gustaría saber como te llamas.'
+                    answers.append(greetings)
+                    message_type = 'name'
 
-            answers_str = ' '.join(answers)
+                answers_str = ' '.join(answers)
+            else:
+                answers_str = ''
+                send_answer = False
+                agent_notify = False
+                if last_empty_messages(business_code, number_user):
+                    answer = f'Entiendo lo que me comentas. Quizás un {business_constants[business_code]["alias_expert"]} pueda orientarte mejor'
+                    answers_str = send_transfer_agent(answer, number_user, business_code)
         else:
             origin = 'agent'
             answers_str = ''
@@ -386,8 +396,8 @@ def reply_message(message, message_type, number_user, usuario, agent, user_compl
 
         answers_str = ' '.join(answers)
         if message_type != 'audio':
-            save_message(number_user, message, answers_str.strip(), message_type, origin, agent, None, business_code)
-
+            save_message(number_user, message, answers_str.strip(), message_type, origin, agent, None,
+                         business_code)
     # Cerramos la conexión y el cursor
     db.close()
 
@@ -402,7 +412,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
         check_transfer_agent = False
         answer = ''
         if query_message.strip() != '':
-            patron = re.compile(r'\bcomunicarme\b.*?\b{}\b'.format(re.escape(business_constants[business_code]["alias_expert"])))
+            patron = re.compile(
+                r'\bcomunicarme\b.*?\b{}\b'.format(re.escape(business_constants[business_code]["alias_expert"])))
             if patron.search(query_message):
                 answer = answer_transfer_agent(business_code)
                 agent_notify = True
@@ -435,7 +446,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                     petition = get_open_petition(query_number, key_topic, business_code)
 
                                     if petition is None:
-                                        workflow = get_workflow(business_code, 'None', key_topic, '', 'interactive', False)
+                                        workflow = get_workflow(business_code, 'None', key_topic, '', 'interactive',
+                                                                False)
                                     else:
                                         if petition.petition_steptype != 'confirm':
                                             petition_step = petition.petition_step
@@ -445,7 +457,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                             petition_steptype = 'data'
 
                                         petition_request = f'¿Desea continuar con "{topic.topic_description}"?'
-                                        workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype, 'TAG': '',
+                                        workflow_values = {'TEXT': petition_request, 'TYPE': petition_steptype,
+                                                           'TAG': '',
                                                            'BUTTON1': 'Continuar', 'GOTOID1': petition_step,
                                                            'BUTTON2': 'Reiniciar', 'GOTOID2': '1',
                                                            'BUTTON3': 'Cancelar', 'GOTOID3': 'cancel'}
@@ -494,9 +507,13 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             if topic.type_code == 'WFU':
                                 answer = f'Ya realizaste este proceso. Si deseas puedes solicitarme hablar con un {business_constants[business_code]["alias_expert"]}'
                             else:
-                                transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
+                                transfer = transfer_agent(behavior, query_message, query_number, query_role,
+                                                          business_code)
                                 answer = transfer['answer']
                                 agent_notify = transfer['agent_notify']
+                                if answer == 'not_chatcompletion':
+                                    return {'answer': answer, 'send_answer': False, 'notify': False,
+                                            'check_transfer_agent': False}
 
                         process_answer(answer, business_code)
                     else:
@@ -504,6 +521,9 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             transfer = transfer_agent(behavior, query_message, query_number, query_role, business_code)
                             answer = transfer['answer']
                             agent_notify = transfer['agent_notify']
+                            if answer == 'not_chatcompletion':
+                                return {'answer': answer, 'send_answer': False, 'notify': False,
+                                        'check_transfer_agent': False}
                         else:
                             reply = get_reply_info(query_message, query_number, query_origin, query_type, query_agent,
                                                    business_code)
@@ -551,7 +571,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                                                 query_number, business_code)
                                             if cantidad.isdigit():
                                                 db: Session = get_db_conn(business_code)
-                                                messages = db.query(Message).filter(Message.user_number == number).order_by(
+                                                messages = db.query(Message).filter(
+                                                    Message.user_number == number).order_by(
                                                     Message.id.desc()).limit(cantidad).all()
                                                 for message in messages:
                                                     answer += f'[{message.msg_date}] {message.msg_sent}\n{message.msg_received}\n'
@@ -570,7 +591,8 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
                             check_transfer_agent = True
                     process_answer(answer, business_code)
         else:
-            answer = f'Parece que tu mensaje está vacío. Por favor, intenta hacer la pregunta de otra forma.'
+            return {'answer': '', 'send_answer': False, 'notify': False,
+                    'check_transfer_agent': False}
 
         answer = str(answer)
         if 'None, es un placer.' in answer:
@@ -602,8 +624,19 @@ def get_answer(query_message, query_role, query_number, query_usuario, query_ori
 
 
 def answer_transfer_agent(business_code):
-    answer = f'Ya realicé la notificación para que te atienda un {business_constants[business_code]["alias_expert"]}.\n'
-    answer += f'En unos minutos uno de nuestros representantes te brindará asistencia.\n'
+    db: Session = get_db_conn(business_code)
+    agent = db.query(Agent).filter(Agent.agent_active.is_(True) & Agent.agent_staff.is_(True)).order_by(
+        Agent.agent_lastcall.asc()).first()
+    if agent:
+        agent_whatsapp = agent.agent_whatsapp
+        agent_whatsapp = f'1(XXX) XXX-{agent_whatsapp[-4:]}'
+        answer = f'Ya realicé la notificación para que le atienda {agent.agent_name} desde el número {agent_whatsapp}.\n'
+        answer += f'Pronto estará comunicándose con usted para brindarle asistencia requerida.\n'
+    else:
+        answer = f'Ya realicé la notificación para que te atienda un {business_constants[business_code]["alias_expert"]}.\n'
+        answer += f'Uno de nuestros representantes te brindará asistencia.\n'
+    db.close()
+
     if business_constants[business_code]["alias_site"] != '':
         answer += f'En nuestro sitio web {business_constants[business_code]["alias_site"]} puede encontrar toda la información necesaria.\n'
     answer += f'Fue un placer para mi atenderte.'
@@ -619,8 +652,8 @@ def transfer_agent(behavior, query_message, query_number, query_role, business_c
         agent_notify = True
     else:
         answer = get_chatcompletion(behavior, query_message, query_number, query_role, business_code)
-        if answer == 'not_chatcompletion':
-            answer = f'Háblame un poco más de eso'
+        if not answer:
+            answer = 'not_chatcompletion'
     return {'agent_notify': agent_notify, 'answer': answer}
 
 
@@ -629,18 +662,22 @@ def suggest_transfer_agent(query_answer, query_number, business_code):
     send_answer = True
     alias_expert = business_constants[business_code]["alias_expert"]
     if alias_expert in query_answer:
-        send_text([query_answer], query_number, business_code)
-        petition_request = f'¿Desea que le transfiera con un {business_constants[business_code]["alias_expert"]}?'
-        workflow_values = {'TEXT': petition_request, 'TYPE': 'agent', 'TAG': '',
-                           'BUTTON1': f'Sí', 'GOTOID1': 'agent',
-                           'BUTTON2': 'nan', 'GOTOID2': 'nan',
-                           'BUTTON3': 'nan', 'GOTOID3': 'nan'}
-        workflow = create_workflow(business_code, 'None', 'agent', '', workflow_values, True)
-        payload = json_button(workflow)
-        send_json(query_number, payload, business_code)
-        answer = workflow['text']
+        answer = send_transfer_agent(query_answer, query_number, business_code)
         send_answer = False
     return {'answer': answer, 'send_answer': send_answer}
+
+
+def send_transfer_agent(query_answer, query_number, business_code):
+    send_text([query_answer], query_number, business_code)
+    petition_request = f'¿Desea que le transfiera con un {business_constants[business_code]["alias_expert"]}?'
+    workflow_values = {'TEXT': petition_request, 'TYPE': 'agent', 'TAG': '',
+                       'BUTTON1': f'Sí', 'GOTOID1': 'agent',
+                       'BUTTON2': 'nan', 'GOTOID2': 'nan',
+                       'BUTTON3': 'nan', 'GOTOID3': 'nan'}
+    workflow = create_workflow(business_code, 'None', 'agent', '', workflow_values, True)
+    payload = json_button(workflow)
+    send_json(query_number, payload, business_code)
+    return workflow['text']
 
 
 def process_answer(answer, business_code):
@@ -719,7 +756,8 @@ def get_chatcompletion(behavior, question, user_number, role, business_code):
                     messages.append({"role": "user", "content": message.msg_sent})
                     messages.append({"role": "assistant", "content": message.msg_received})
             else:
-                role_queries = db.query(Query).filter(Query.agent_number == user_number).order_by(Query.id.desc()).limit(
+                role_queries = db.query(Query).filter(Query.agent_number == user_number).order_by(
+                    Query.id.desc()).limit(
                     business_constants[business_code]["messages_historical"]).all()
                 role_queries = sorted(role_queries, key=lambda x: x.id)
                 for query in role_queries:
@@ -1857,3 +1895,14 @@ def answering_name(business_code, user_number, index_default):
         return '1'
 
     return index_default
+
+
+def last_empty_messages(business_code, user_number):
+    db: Session = get_db_conn(business_code)
+    last_two_messages = db.query(Message).filter(Message.user_number == user_number).order_by(desc(Message.id)).limit(
+        2).all()
+    db.close()
+
+    if all(not msg.msg_received for msg in last_two_messages):
+        return True
+    return False
