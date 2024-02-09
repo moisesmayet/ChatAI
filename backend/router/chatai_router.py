@@ -251,18 +251,22 @@ async def webhook_whatsapp(request: Request, business_code: str):
                                                     msg = download_media(business_code, user_whatsapp,
                                                                          message_data[0][message_type], message_type,
                                                                          idwa)
-                                                answers = f'Gracias por tu mensaje'
+                                                answers = f'Gracias por la información'
                                                 send_text([answers], user_whatsapp, business_code)
                                                 save_message(user_whatsapp, msg, answers, message_type, 'whatsapp',
                                                              agent, None, business_code)
                                                 return JSONResponse({'status': 'success'}, status_code=200)
                                             else:
-                                                if message_type != 'reaction':
+                                                if message_type == 'button':
+                                                    message = message_data[0]['button']['text'].strip()
                                                     answers = f'Gracias por tu mensaje'
                                                     send_text([answers], user_whatsapp, business_code)
-                                                    save_message(user_whatsapp, '', answers, message_type, 'whatsapp',
+                                                    save_message(user_whatsapp, message, answers, message_type, 'whatsapp',
                                                                  agent, None, business_code)
                                                     return JSONResponse({'status': 'success'}, status_code=200)
+                                                else:
+                                                    if message_type != 'reaction':
+                                                        return JSONResponse({'status': 'success'}, status_code=200)
 
                             # Revisar que haya mensaje
                             if len(message):

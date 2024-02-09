@@ -148,7 +148,9 @@ async def users_marketing(request: Request, business_code: str):
         db.close()
 
         for user_number in users_numbers:
-            send_template(agent.agent_name, user_number.strip(), marketing_message, "notificacion_marketing", business_code)
+            user_number = user_number.strip()
+            send_template(agent.agent_name, user_number, marketing_message, "notificacion_marketing", business_code)
+            save_message(user_number, marketing_message, False, business_code)
 
         redirect = RedirectResponse(url=user_app.url_path_for('users_marketing', business_code=business_code))
         redirect.status_code = 302
@@ -233,33 +235,20 @@ async def send_chat(request: Request, business_code: str):
         user_number = form['chat_number']
         user_whatsapp = form['chat_whatsapp']
 
-        db: Session = get_db_conn(business_code)
-
         user_wait = True
         if form['chat_start'] == 'True':
             agent_number = request.cookies.get('UserId')
+            db: Session = get_db_conn(business_code)
             agent = db.query(Agent).filter(Agent.agent_number == agent_number).first()
+            db.close()
             send_template(agent.agent_name, user_whatsapp, chat_msg, "consentimiento_usuario", business_code)
         else:
             if 'close_chat' in form:
                 chat_msg = f'Fue un placer atenderte. Si tienes más consultas o necesitas asistencia en el futuro no dudes en escribir.\n¡Que sigas teniendo un maravilloso día!'
                 user_wait = False
-
             send_text(chat_msg, user_whatsapp, business_code)
 
-        new_message = Message(user_number=user_number, msg_sent='', msg_received=chat_msg.strip(), msg_type='text', msg_origin='agent', msg_date=datetime.now())
-        db.add(new_message)
-        db.commit()
-
-        last_message = db.query(Message).filter(Message.user_number == user_number).first()
-        user = db.query(User).filter(User.user_number == user_number).first()
-        user.user_lastmsg = last_message.id
-        user.user_lastdate = datetime.now()
-        user.user_wait = user_wait
-        db.merge(user)
-        db.commit()
-
-        db.close()
+        save_message(user_number, chat_msg, user_wait, business_code)
 
         redirect = RedirectResponse(url=user_app.url_path_for('users_messages', user_number=user_number, business_code=business_code))
         redirect.status_code = 302
@@ -294,6 +283,22 @@ def refresh_chat(business_code: str, user_number: str):
     db.close()
 
     return {'content': content}
+
+
+def save_message(user_number, chat_msg, user_wait, business_code):
+    db: Session = get_db_conn(business_code)
+    new_message = Message(user_number=user_number, msg_sent='', msg_received=chat_msg.strip(), msg_type='text', msg_origin='agent', msg_date=datetime.now())
+    db.add(new_message)
+    db.commit()
+
+    last_message = db.query(Message).filter(Message.user_number == user_number).first()
+    user = db.query(User).filter(User.user_number == user_number).first()
+    user.user_lastmsg = last_message.id
+    user.user_lastdate = datetime.now()
+    user.user_wait = user_wait
+    db.merge(user)
+    db.commit()
+    db.close()
 
 
 def send_text(anwser, numberwa, business_code):
