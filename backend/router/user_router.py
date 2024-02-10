@@ -298,17 +298,18 @@ def refresh_chat(business_code: str, user_number: str):
 
 def save_message(user_number, chat_msg, user_wait, business_code):
     db: Session = get_db_conn(business_code)
-    new_message = Message(user_number=user_number, msg_sent='', msg_received=chat_msg.strip(), msg_type='text', msg_origin='agent', msg_date=datetime.now())
-    db.add(new_message)
-    db.commit()
-
-    last_message = db.query(Message).filter(Message.user_number == user_number).first()
     user = db.query(User).filter(User.user_number == user_number).first()
-    user.user_lastmsg = last_message.id
-    user.user_lastdate = datetime.now()
-    user.user_wait = user_wait
-    db.merge(user)
-    db.commit()
+    if user:
+        new_message = Message(user_number=user_number, msg_sent='', msg_received=chat_msg.strip(), msg_type='text', msg_origin='agent', msg_date=datetime.now())
+        db.add(new_message)
+        db.commit()
+
+        last_message = db.query(Message).filter(Message.user_number == user_number).first()
+        user.user_lastmsg = last_message.id
+        user.user_lastdate = datetime.now()
+        user.user_wait = user_wait
+        db.merge(user)
+        db.commit()
     db.close()
 
 
