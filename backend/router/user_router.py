@@ -4,7 +4,7 @@ import re
 import requests
 import pandas as pd
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from heyoo import WhatsApp
 from datetime import datetime, timedelta
@@ -25,11 +25,22 @@ templates = Jinja2Templates(directory='./frontend/templates')
 @user_app.get('/{business_code}/users', response_class=HTMLResponse)
 @auth_required
 def users_list(request: Request, business_code: str):
+    message = request.cookies.get('message')
+
     db: Session = get_db_conn(business_code)
     search = request.query_params.get('search', '')
     users = db.query(User).filter(User.user_whatsapp.like(f"%{search}%")).order_by(User.user_lastmsg.desc()).all()
     db.close()
-    return templates.TemplateResponse('dashboard/users/users.html', {'request': request, 'users': users, 'permission': request.cookies.get('Permission'), 'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')), 'business_code': business_code, 'search': search})
+
+    response = templates.TemplateResponse(
+        'dashboard/users/users.html',
+        {'request': request, 'users': users, 'permission': request.cookies.get('Permission'),
+         'language': eval(request.cookies.get('UserLang')), 'menu': eval(request.cookies.get('Menu')),
+         'message': message, 'business_code': business_code, 'search': search}
+    )
+    response.set_cookie(key='message', value='', expires=0)
+
+    return response
 
 
 @user_app.get('/{business_code}/users/view/{user_number}', response_class=HTMLResponse)

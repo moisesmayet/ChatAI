@@ -1,20 +1,37 @@
 import json
 import requests
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi_utilities import repeat_at
 from datetime import datetime, timedelta
-from heyoo import WhatsApp
 from backend.config.db import get_db_conn
+from backend.router.auth.auth_router import auth_required
 from sqlalchemy.orm import Session
 from backend.model.model import User, Message
 from backend.config import constants
+from backend.router.user_router import user_app
 
 scheduler_app = APIRouter()
 
 
+@scheduler_app.get('/{business_code}/today', response_class=HTMLResponse)
+@auth_required
+def scheduler_today(request: Request, business_code: str):
+    send_notification()
+
+    response = RedirectResponse(url=user_app.url_path_for('users_list', business_code=business_code))
+    response.set_cookie(key='message', value='Reporte enviado')
+
+    return response
+
+
 @scheduler_app.on_event('startup')
 @repeat_at(cron="0 8 * * *")
-async def send_notification():
+async def scheduler_daily():
+    send_notification()
+
+
+def send_notification():
     # Obtener la fecha actual y calcular la fecha del día anterior
     fecha_actual = datetime.now()
     fecha_anterior = fecha_actual - timedelta(days=1)
