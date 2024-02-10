@@ -4,18 +4,20 @@ import re
 import requests
 import pandas as pd
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from heyoo import WhatsApp
 from datetime import datetime, timedelta
 from starlette.responses import StreamingResponse
 from backend import main
 from backend.config import constants
+from backend.config.constants import business_constants
 from backend.router.auth.auth_router import auth_required
 from backend.model.model import User, Agent, Message
 from backend.config.db import get_db_conn
 from sqlalchemy.orm import Session
 
+from backend.router.chatai_router import save_bug, notify_bug
 
 user_app = APIRouter()
 
@@ -297,20 +299,29 @@ def refresh_chat(business_code: str, user_number: str):
 
 
 def save_message(user_number, chat_msg, user_wait, business_code):
-    db: Session = get_db_conn(business_code)
-    user = db.query(User).filter(User.user_number == user_number).first()
-    if user:
-        new_message = Message(user_number=user_number, msg_sent='', msg_received=chat_msg.strip(), msg_type='text', msg_origin='agent', msg_date=datetime.now())
-        db.add(new_message)
-        db.commit()
+    try:
+        db: Session = get_db_conn(business_code)
+        user = db.query(User).get(user_number)
+        if not user:
+            new_user = User(user_number=user_number, user_name=business_constants[business_code]["alias_user"],
+                            user_whatsapp=user_number)
+            db.add(new_user)
+            db.flush()
+            user = new_user
 
-        last_message = db.query(Message).filter(Message.user_number == user_number).first()
-        user.user_lastmsg = last_message.id
+        new_message = Message(user_number=user_number, msg_sent='', msg_received=chat_msg.strip(), msg_type='text',
+                              msg_origin='agent', msg_date=datetime.now())
+        db.add(new_message)
+        db.flush()
+
+        user.user_lastmsg = new_message.id
         user.user_lastdate = datetime.now()
         user.user_wait = user_wait
         db.merge(user)
         db.commit()
-    db.close()
+    except Exception as e:
+        save_bug(business_code, str(e), 'dashboard')
+        notify_bug(f'save_message', user_number, chat_msg.strip(), str(e), business_code)
 
 
 def send_text(anwser, numberwa, business_code):
